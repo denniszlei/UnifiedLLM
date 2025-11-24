@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Provider Manager</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LLM Provider Manager</h1>
+            <div class="header-status">
+                <div id="gptloadStatus" class="gptload-status">
+                    <span class="status-indicator"></span>
+                    <div class="status-details">
+                        <div class="status-url">Checking GPT-Load...</div>
+                        <div class="status-info"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="syncBtn" class="btn btn-primary" title="Sends normalized models to GPT-Load and generates uni-api configuration">Sync Configuration</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Dashboard View -->
+            <div id="dashboardView" class="view active">
+                <div class="dashboard-header">
+                    <h2>Providers</h2>
+                    <button id="addProviderBtn" class="btn btn-success">+ Add Provider</button>
+                </div>
+
+                <div id="syncStatus" class="sync-status"></div>
+
+                <div id="providersList" class="providers-list">
+                    <div class="loading">Loading providers...</div>
+                </div>
+            </div>
+
+            <!-- Provider Detail View -->
+            <div id="providerDetailView" class="view">
+                <div class="detail-header">
+                    <button id="backToListBtn" class="btn btn-secondary">← Back to List</button>
+                    <h2 id="providerDetailTitle">Provider Details</h2>
+                    <button id="fetchModelsBtn" class="btn btn-primary">Fetch Models</button>
+                </div>
+
+                <div id="providerInfo" class="provider-info"></div>
+
+                <div class="models-section">
+                    <div class="models-header">
+                        <h3>Models</h3>
+                        <button id="saveChangesBtn" class="btn btn-success save-changes-btn hidden">
+                            Save Changes (<span id="changeCount">0</span>)
+                        </button>
+                    </div>
+                    <div id="modelsList" class="models-list">
+                        <div class="loading">Loading models...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sync Progress View -->
+            <div id="syncProgressView" class="view">
+                <div class="sync-progress-container">
+                    <h2>Configuration Sync</h2>
+                    <div id="syncProgressContent">
+                        <div class="progress-bar">
+                            <div id="progressBarFill" class="progress-bar-fill"></div>
+                        </div>
+                        <div id="syncSteps" class="sync-steps"></div>
+                        <div id="syncMessage" class="sync-message"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Save Confirmation Modal -->
+    <div id="saveConfirmationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Save Changes</h3>
+                <span class="close" onclick="closeSaveConfirmation()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>You are about to save the following changes:</p>
+                <div id="saveConfirmationSummary" class="save-summary"></div>
+                <p class="save-warning">These changes will be applied to your local database. Click "Sync Configuration" after saving to update GPT-Load and uni-api.</p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" onclick="confirmSaveChanges()">Confirm</button>
+                <button type="button" class="btn btn-secondary" onclick="closeSaveConfirmation()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Success Modal -->
+    <div id="saveSuccessModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✓ Changes Saved Successfully</h3>
+                <span class="close" onclick="closeSaveSuccessModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Your model changes have been saved to the database.</p>
+                <div class="next-steps">
+                    <h4>Next Steps:</h4>
+                    <ol>
+                        <li>Click the <strong>"Sync Configuration"</strong> button in the header</li>
+                        <li>This will generate GPT-Load groups based on your normalized models</li>
+                        <li>It will also create the uni-api configuration file</li>
+                    </ol>
+                </div>
+                <p class="info-note">💡 The sync process sends your configuration to GPT-Load and generates the api.yaml file for uni-api.</p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" onclick="closeSaveSuccessModal()">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Provider Modal -->
+    <div id="providerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add Provider</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="providerForm">
+                <div class="form-group">
+                    <label for="providerName">Provider Name: <span class="required">*</span></label>
+                    <input type="text" 
+                           id="providerName" 
+                           name="name" 
+                           required 
+                           placeholder="e.g., OpenAI, OpenRouter"
+                           minlength="1"
+                           maxlength="100">
+                    <small class="form-help">A friendly name to identify this provider</small>
+                </div>
+                <div class="form-group">
+                    <label for="providerBaseUrl">Base URL: <span class="required">*</span></label>
+                    <input type="url" 
+                           id="providerBaseUrl" 
+                           name="base_url" 
+                           required 
+                           placeholder="https://api.provider.com/v1/chat/completions"
+                           pattern="https?://.+">
+                    <small class="form-help">The API endpoint URL for this provider</small>
+                </div>
+                <div class="form-group">
+                    <label for="providerApiKey">API Key: <span class="required">*</span></label>
+                    <input type="password" 
+                           id="providerApiKey" 
+                           name="api_key" 
+                           required
+                           minlength="10">
+                    <small class="form-help">Your authentication key for this provider</small>
+                </div>
+                <div class="form-group">
+                    <label for="providerChannelType">Channel Type: <span class="required">*</span></label>
+                    <select id="providerChannelType" name="channel_type" required>
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="gemini">Gemini</option>
+                    </select>
+                    <small class="form-help">The API format this provider uses</small>
+                </div>
+                <div id="formMessage" class="form-message"></div>
+                <div class="form-actions">
+                    <button type="button" id="testConnectionBtn" class="btn btn-secondary">Test Connection</button>
+                    <button type="submit" class="btn btn-primary">Save Provider</button>
+                    <button type="button" class="btn btn-secondary cancel-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

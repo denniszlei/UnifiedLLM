@@ -1,0 +1,73 @@
+"""GPT-Load status API endpoints."""
+
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.database.database import get_db
+from app.services.gptload_client import GPTLoadClient
+from app.models.gptload_group import GPTLoadGroup
+from app.config import settings
+
+router = APIRouter(prefix="/api/gptload", tags=["gptload"])
+
+
+class GPTLoadStatusResponse(BaseModel):
+    """GPT-Load status response."""
+    
+    connected: bool
+    url: str
+    group_count: int
+    error_message: Optional[str] = None
+
+
+@router.get("/status", response_model=GPTLoadStatusResponse)
+async def get_gptload_status(db: Session = Depends(get_db)):
+    """Get GPT-Load connection status and group count.
+    
+    This endpoint checks connectivity to GPT-Load and returns:
+    - Connection status (connected/disconnected)
+    - GPT-Load URL
+    - Number of groups currently in GPT-Load
+    
+    Requirements: 13.1, 13.2, 13.3, 13.5
+    """
+    gptload_url = settings.gptload_url
+    
+    try:
+        # Check connectivity to GPT-Load
+        async with GPTLoadClient() as client:
+            is_healthy = await client.health_check()
+            
+            if not is_healthy:
+                return GPTLoadStatusResponse(
+                    connected=False,
+                    url=gptload_url,
+                    group_count=0,
+                    error_message="GPT-Load service is not responding"
+                )
+            
+            # Get group count from GPT-Load
+            try:
+                groups = await client.list_groups()
+                group_count = len(groups) if groups else 0
+            except Exception as e:
+                # If we can't get groups but health check passed, still show connected
+                group_count = 0
+            
+            return GPTLoadStatusResponse(
+                connected=True,
+                url=gptload_url,
+                group_count=group_count,
+                error_message=None
+            )
+            
+    except Exception as e:
+        # Connection failed
+        return GPTLoadStatusResponse(
+            connected=False,
+            url=gptload_url,
+            group_count=0,
+            error_message=str(e)
+        )
