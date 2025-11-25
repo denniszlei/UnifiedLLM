@@ -21,7 +21,7 @@ from app.models.gptload_group import GPTLoadGroup
 from app.models.sync_record import SyncRecord
 
 app = FastAPI(
-    title="LLM Provider Manager",
+    title="UnifiedLLM",
     description="Configuration orchestrator for GPT-Load and uni-api",
     version="0.1.0",
 )
@@ -82,7 +82,7 @@ async def root():
     index_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"message": "LLM Provider Manager API", "version": "0.1.0"}
+    return {"message": "UnifiedLLM API", "version": "0.1.0"}
 
 
 @app.get("/api/health", response_model=HealthResponse)

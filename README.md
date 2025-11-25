@@ -1,4 +1,4 @@
-# LLM Provider Manager
+# UnifiedLLM
 
 Configuration orchestrator for GPT-Load and uni-api. This service provides a unified interface for managing multiple LLM API providers, normalizing model names, and automatically generating configurations for downstream services.
 
@@ -21,7 +21,7 @@ The system consists of three services working together:
 │                    Docker Host                               │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  LLM Provider Manager (port 8000)                    │  │
+│  │  UnifiedLLM (port 8000)                              │  │
 │  │  - Web UI                                            │  │
 │  │  - REST API                                          │  │
 │  │  - Configuration Generator                           │  │
@@ -67,7 +67,7 @@ Get up and running in 5 minutes with Docker!
 1. **Clone the repository:**
 ```bash
 git clone <repository-url>
-cd llm-provider-manager
+cd unifiedllm
 ```
 
 2. **Create environment file:**
@@ -128,7 +128,7 @@ docker-compose up -d
 ```
 
 This will:
-- Build the LLM Provider Manager image
+- Build the UnifiedLLM image
 - Pull GPT-Load and uni-api images
 - Create volumes for data persistence
 - Start all services with health checks
@@ -151,7 +151,7 @@ Open your browser: **http://localhost:8000**
 docker-compose logs -f
 
 # View logs for specific service
-docker-compose logs -f llm-provider-manager
+docker-compose logs -f unifiedllm
 
 # Restart services
 docker-compose restart
@@ -234,7 +234,7 @@ Edit `.env` to customize your deployment:
 
 #### Optional Variables
 
-- `LLM_MANAGER_PORT` - Port for LLM Provider Manager UI (default: 8000)
+- `UNIFIEDLLM_PORT` - Port for UnifiedLLM UI (default: 8000)
 - `GPTLOAD_PORT` - Port for GPT-Load API (default: 3001)
 - `UNI_API_PORT` - Port for uni-api (default: 8001)
 - `GPTLOAD_IMAGE` - GPT-Load Docker image (default: ghcr.io/gptload/gptload:latest)
@@ -244,7 +244,7 @@ Edit `.env` to customize your deployment:
 
 By default, services are exposed on:
 
-- **LLM Provider Manager**: http://localhost:8000
+- **UnifiedLLM**: http://localhost:8000
 - **GPT-Load**: http://localhost:3001
 - **uni-api**: http://localhost:8001
 
@@ -254,18 +254,18 @@ To change ports, edit the corresponding variables in `.env`.
 
 Data is persisted using Docker volumes:
 
-- `llm-manager-data` - LLM Provider Manager database
+- `unifiedllm-data` - UnifiedLLM database
 - `gptload-data` - GPT-Load database and configuration
 - `uni-api-config` - Shared uni-api configuration file
 
 #### Backup Data
 
 ```bash
-# Backup LLM Provider Manager database
-docker run --rm -v llm-provider-manager_llm-manager-data:/data -v $(pwd):/backup alpine tar czf /backup/llm-manager-backup.tar.gz -C /data .
+# Backup UnifiedLLM database
+docker run --rm -v unifiedllm_unifiedllm-data:/data -v $(pwd):/backup alpine tar czf /backup/unifiedllm-backup.tar.gz -C /data .
 
 # Backup GPT-Load data
-docker run --rm -v llm-provider-manager_gptload-data:/data -v $(pwd):/backup alpine tar czf /backup/gptload-backup.tar.gz -C /data .
+docker run --rm -v unifiedllm_gptload-data:/data -v $(pwd):/backup alpine tar czf /backup/gptload-backup.tar.gz -C /data .
 ```
 
 ## Troubleshooting
@@ -294,7 +294,7 @@ Common issues:
 Reset the database:
 ```bash
 docker-compose stop
-docker volume rm llm-provider-manager_llm-manager-data
+docker volume rm unifiedllm_unifiedllm-data
 docker-compose up -d
 ```
 
@@ -305,14 +305,14 @@ docker-compose up -d
 Check service health:
 ```bash
 docker-compose ps
-docker inspect --format='{{json .State.Health}}' llm-provider-manager | jq
+docker inspect --format='{{json .State.Health}}' unifiedllm | jq
 ```
 
 ### Port Already in Use
 
 Edit `.env` and change the port:
 ```env
-LLM_MANAGER_PORT=8080
+UNIFIEDLLM_PORT=8080
 ```
 
 Then restart:
@@ -332,7 +332,7 @@ docker-compose up -d
 1. **Clone the repository:**
 ```bash
 git clone <repository-url>
-cd llm-provider-manager
+cd unifiedllm
 ```
 
 2. **Create a virtual environment:**
@@ -401,7 +401,7 @@ ruff check app/
 ## Project Structure
 
 ```
-llm-provider-manager/
+unifiedllm/
 ├── app/
 │   ├── api/              # API endpoints
 │   │   ├── config.py     # Configuration sync endpoints

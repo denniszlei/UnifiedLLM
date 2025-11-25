@@ -1,24 +1,24 @@
 version: '3.8'
 
 services:
-  # LLM Provider Manager - Configuration orchestrator
-  llm-provider-manager:
+  # UnifiedLLM - Configuration orchestrator
+  unifiedllm:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: llm-provider-manager
+    container_name: unifiedllm
     ports:
-      - "${LLM_MANAGER_PORT:-8000}:8000"
+      - "${UNIFIEDLLM_PORT:-8000}:8000"
     environment:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - GPTLOAD_URL=http://gptload:3001
       - GPTLOAD_AUTH_KEY=${GPTLOAD_AUTH_KEY}
-      - DATABASE_URL=sqlite:///./data/llm_manager.db
+      - DATABASE_URL=sqlite:///./data/unifiedllm.db
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
     volumes:
       # Persist database
-      - llm-manager-data:/app/data
+      - unifiedllm-data:/app/data
       # Share uni-api config
       - uni-api-config:/app/uni-api-config
     depends_on:
@@ -82,8 +82,8 @@ services:
       start_period: 10s
 
 volumes:
-  # Persistent storage for LLM Provider Manager database
-  llm-manager-data:
+  # Persistent storage for UnifiedLLM database
+  unifiedllm-data:
     driver: local
   
   # Persistent storage for GPT-Load database and configuration

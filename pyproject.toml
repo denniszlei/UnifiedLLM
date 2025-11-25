@@ -1,7 +1,7 @@
 [project]
-name = "llm-provider-manager"
+name = "unifiedllm"
 version = "0.1.0"
-description = "LLM Provider Manager - Configuration orchestrator for GPT-Load and uni-api"
+description = "UnifiedLLM - Configuration orchestrator for GPT-Load and uni-api"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.104.0",

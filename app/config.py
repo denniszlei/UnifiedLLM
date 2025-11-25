@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Database
-    database_url: str = "sqlite:///./data/llm_manager.db"
+    database_url: str = "sqlite:///./data/unifiedllm.db"
 
     # Encryption (validated at startup by EncryptionService)
     encryption_key: Optional[str] = None
