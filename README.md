@@ -1,5 +1,8 @@
 # UnifiedLLM
 
+[![Build and Push Docker Image](https://github.com/denniszlei/UnifiedLLM/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/denniszlei/UnifiedLLM/actions/workflows/docker-publish.yml)
+[![Docker Image](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/denniszlei/UnifiedLLM/pkgs/container/unifiedllm)
+
 Configuration orchestrator for GPT-Load and uni-api. This service provides a unified interface for managing multiple LLM API providers, normalizing model names, and automatically generating configurations for downstream services.
 
 ## Features
@@ -50,6 +53,24 @@ The system consists of three services working together:
     External LLM Providers
     (OpenAI, Anthropic, etc.)
 ```
+
+## Docker Images
+
+Pre-built multi-architecture Docker images are available on GitHub Container Registry:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/denniszlei/unifiedllm:latest
+
+# Pull a specific version
+docker pull ghcr.io/denniszlei/unifiedllm:v1.0.0
+```
+
+**Supported Architectures:**
+- `linux/amd64` (x86_64)
+- `linux/arm64` (ARM64/Apple Silicon)
+
+Images are automatically built and published on every push to the master branch and on version tags.
 
 ## Quick Start with Docker (Recommended)
 
@@ -494,14 +515,32 @@ deploy:
 
 ## Updating
 
+### Using Pre-built Images (Recommended)
+
 To update to the latest version:
+
+```bash
+# Pull the latest image
+docker-compose pull
+
+# Restart with new image
+docker-compose up -d
+
+# Check logs
+docker-compose logs -f
+```
+
+### Building from Source
+
+To update when building locally:
 
 ```bash
 # Pull latest code
 git pull
 
 # Rebuild and restart
-docker-compose up -d --build
+docker-compose build
+docker-compose up -d
 
 # Check logs
 docker-compose logs -f

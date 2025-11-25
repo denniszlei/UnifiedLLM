@@ -3,9 +3,11 @@ version: '3.8'
 services:
   # UnifiedLLM - Configuration orchestrator
   unifiedllm:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${UNIFIEDLLM_IMAGE:-ghcr.io/denniszlei/unifiedllm:latest}
+    # Uncomment to build locally instead of using pre-built image:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     container_name: unifiedllm
     ports:
       - "${UNIFIEDLLM_PORT:-8000}:8000"
