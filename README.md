@@ -212,35 +212,76 @@ docker-compose down -v
 
 ### 3. Normalize Model Names
 
-1. View the model list for a provider
-2. Click "Edit" next to a model
-3. Enter a normalized name (e.g., rename "gpt-4-turbo-preview" to "gpt-4-turbo")
-4. Save changes
+Model normalization allows you to create unified names across different providers. For example, you can map "gpt-4-turbo-preview" from OpenAI and "gpt-4-turbo" from OpenRouter to a single normalized name "gpt-4-turbo".
 
-The system will automatically detect duplicates and suggest provider splitting.
+1. Click on a provider to view its models
+2. In the models list, click the "Edit" icon (✏️) next to a model
+3. Enter a normalized name in the dialog
+4. Click "Save"
+
+**Normalized Names Sidebar:**
+- The right sidebar shows all normalized names across providers
+- Click on a normalized name to see which models map to it
+- The system automatically detects duplicates (same normalized name from multiple providers)
+
+**What happens with duplicates:**
+- When multiple providers have models with the same normalized name, the system creates:
+  - **Standard groups** for each provider (e.g., "openai-gpt-4-turbo", "openrouter-gpt-4-turbo")
+  - **Aggregate group** that combines them (e.g., "gpt-4-turbo")
+- This enables load balancing and failover across providers
 
 ### 4. Sync Configuration
 
-1. Click "Sync" in the dashboard
-2. Wait for the sync process to complete
-3. The system will:
-   - Create GPT-Load groups via API
-   - Generate uni-api configuration
-   - Update both services
+After normalizing your models, sync the configuration to GPT-Load and uni-api:
+
+1. Click the **"Sync to GPT-Load"** button in the header
+2. The sync process will:
+   - Create/update GPT-Load groups via REST API
+   - Add your provider API keys to the groups
+   - Create aggregate groups for duplicate normalized names
+   - Generate uni-api YAML configuration
+   - Save sync history to the database
+3. Monitor the progress in the sync view
+4. Review any errors or warnings
+
+**Sync Features:**
+- **Incremental sync**: Only updates what changed (faster)
+- **Full sync**: Recreates all groups from scratch
+- **Error handling**: Collects and reports all errors
+- **Rollback**: Can revert to previous configuration if needed
 
 ### 5. Use the Unified API
 
-After syncing, make API calls through uni-api:
+After syncing, your LLM providers are accessible through uni-api with normalized model names:
 
+**Through uni-api (Recommended):**
 ```bash
 curl http://localhost:8001/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sk-user-key" \
+  -H "Authorization: Bearer your-uni-api-key" \
   -d '{
     "model": "gpt-4-turbo",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
+
+**Through GPT-Load directly:**
+```bash
+curl http://localhost:3001/proxy/gpt-4-turbo/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-gptload-proxy-key" \
+  -d '{
+    "model": "gpt-4-turbo",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+**Benefits:**
+- Use normalized names instead of provider-specific names
+- Automatic load balancing across multiple providers
+- Failover if one provider is down
+- Centralized API key management
+- Request logging and monitoring
 
 ## Docker Configuration
 
