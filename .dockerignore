@@ -8,11 +8,14 @@ __pycache__/
 dist/
 build/
 *.egg
+pip-log.txt
 
 # Virtual environments
 venv/
 env/
 ENV/
+.venv
+.python-version
 
 # IDE
 .vscode/
@@ -20,22 +23,30 @@ ENV/
 *.swp
 *.swo
 *~
+.kiro/
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
+.hypothesis/
+*.cover
+.cache
 
 # Git
 .git/
 .gitignore
+.gitattributes
+.gitmodules
 
 # Environment
 .env
 .env.local
+.env.*.local
+.env.example
 
-# Database
+# Database (exclude from Docker image)
 *.db
 *.sqlite
 *.sqlite3
@@ -50,25 +61,32 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
-# Reference files
+# Reference files (not needed in production)
 referrence/
 
-# Test files
+# Test files (not needed in production)
 tests/
 *.test.py
+pytest.ini
 
 # Development files
 requirements-dev.txt
 pyproject.toml
+validate_setup.py
 
 # Logs
 *.log
+logs/
 
 # OS
 .DS_Store
 Thumbs.db
+*.bak
 
 # Temporary files
 tmp/
 temp/
 *.tmp
+
+# Spec files (development only)
+.kiro/

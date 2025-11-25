@@ -466,3 +466,339 @@
 
 - [ ] 19. Final checkpoint - Test UX improvements
   - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 19.1 Move Save Changes button to bottom of model list
+
+
+
+
+
+  - Relocate button from top to bottom of models table
+  - Ensure button remains visible and accessible
+  - Add CSS for sticky footer positioning if needed
+  - _Requirements: 18.1_
+
+- [x] 20. Implement incremental sync for GPT-Load configuration
+
+
+
+
+
+  - Implement smart diff-based updates instead of full recreation
+  - Handle all modification scenarios
+  - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 17.7, 17.8, 17.9, 17.10, 17.11, 17.12_
+
+- [x] 20.1 Implement configuration state comparison
+
+
+  - Create get_existing_config() to fetch current GPT-Load groups and sub-groups
+  - Parse existing group configurations (model_redirect_rules, sub-groups)
+  - Build desired configuration from local database
+  - _Requirements: 17.7_
+
+- [x] 20.2 Implement diff computation logic
+
+
+  - Enhance diff_configs() to identify groups to CREATE, UPDATE, DELETE
+  - Detect changes in model_redirect_rules for standard groups
+  - Detect changes in aggregate sub-group membership
+  - Identify orphaned aggregates (only 1 sub-group remaining)
+  - _Requirements: 17.7_
+
+- [x] 20.3 Implement standard group update operations
+
+
+  - Add update_group() method using PUT /api/groups/{id}
+  - Handle adding models to model_redirect_rules (Scenario A)
+  - Handle removing models from model_redirect_rules (Scenario B)
+  - Handle changing normalized names in model_redirect_rules (Scenario C)
+  - _Requirements: 17.1, 17.2, 17.3, 17.9_
+
+- [x] 20.4 Implement aggregate group management
+
+
+  - Implement delete_aggregate_group() using DELETE /api/groups/{id}
+  - Implement remove_sub_group() using DELETE /api/groups/{id}/sub-groups/{sub_id}
+  - Handle removing provider from aggregate when model deleted
+  - Handle removing provider from aggregate when normalization changes
+  - Handle cleanup: Delete aggregate if only 1 sub-group remains
+  - _Requirements: 17.2, 17.3, 17.4, 17.6, 17.10_
+
+- [x] 20.5 Implement new provider with duplicate handling
+
+
+  - Handle creating new standard group for new provider (Scenario D)
+  - Add API keys to new group using POST /api/keys/add-async
+  - Create or update aggregate group for duplicate models
+  - Add new provider as sub-group to existing aggregate
+  - _Requirements: 17.5_
+
+- [x] 20.6 Implement sync operation sequencing
+
+
+  - Update sync_configuration() to use incremental approach
+  - Step 1: Delete aggregates that need recreation
+  - Step 2: Update existing standard groups (model_redirect_rules changes)
+  - Step 3: Create new standard groups
+  - Step 4: Delete obsolete standard groups
+  - Step 5: Create/recreate aggregate groups with correct sub-groups
+  - Handle partial failures with detailed error reporting
+  - _Requirements: 17.8, 17.11_
+
+- [x] 20.7 Add database tracking for sync state
+
+
+  - Add last_sync_timestamp to gptload_groups table
+  - Add config_hash column to detect changes
+  - Update sync_records with detailed change summary
+  - Track which groups were created/updated/deleted per sync
+  - _Requirements: 17.12_
+
+- [ ]* 20.8 Write manual test scenarios documentation
+  - Document Scenario A: Add models to existing provider
+  - Document Scenario B: Remove models and aggregate cleanup
+  - Document Scenario C: Normalization changes affecting aggregates
+  - Document Scenario D: New provider with duplicate models
+  - Document expected outcomes for Docker testing
+  - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
+
+- [ ] 21. Final checkpoint - Manual Docker testing
+  - Test all scenarios on remote Docker deployment
+  - Verify GPT-Load groups are updated correctly
+  - Ask user if issues arise
+
+- [x] 22. Implement uni-api configuration display section
+
+
+
+
+
+  - Add uni-api config section to dashboard view
+  - Display generated YAML with download button
+  - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5_
+
+- [x] 22.1 Create uni-api config section in dashboard
+
+
+  - Add new section below providers list in dashboard view
+  - Create collapsible/expandable section for uni-api config
+  - Add section header with title "uni-api Configuration"
+  - _Requirements: 19.1_
+
+- [x] 22.2 Implement YAML preview display
+
+
+  - Fetch uni-api YAML from GET /api/config/uni-api/yaml endpoint
+  - Display YAML content in a code block with monospace font
+  - Add syntax highlighting or preserve formatting
+  - Show loading state while fetching
+  - Handle empty state when no groups exist
+  - _Requirements: 19.2, 19.4, 19.5_
+
+- [x] 22.3 Add download button for uni-api config
+
+  - Create "Download api.yaml" button in uni-api section
+  - Implement download functionality using /api/config/uni-api/download endpoint
+  - Trigger browser download with correct filename (api.yaml)
+  - Disable button when no config is available
+  - _Requirements: 19.3_
+
+- [x] 22.4 Add auto-refresh on sync completion
+
+
+  - Refresh uni-api config display after successful sync
+  - Update config section when returning to dashboard
+  - Show updated timestamp or indicator
+  - _Requirements: 19.2_
+
+- [x] 23. Implement normalized model name reference display
+
+
+
+
+  - Add sidebar panel showing existing normalized model names
+  - Implement autocomplete for model name inputs
+  - Add click-to-filter functionality
+  - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5_
+
+- [x] 23.1 Create API endpoint for normalized names
+
+
+  - Implement GET /api/models/normalized-names endpoint
+  - Query database for unique normalized names with counts
+  - Return list with name, provider_count, and model_count
+  - Order by provider_count DESC, then name ASC
+  - _Requirements: 20.1, 20.4_
+
+- [x] 23.2 Add normalized names sidebar to provider detail view
+
+
+  - Create sidebar panel component in provider detail page
+  - Display list of normalized model names with provider counts
+  - Add search/filter input for the list
+  - Style with fixed position or scrollable container
+  - Load data from /api/models/normalized-names on page load
+  - _Requirements: 20.1, 20.4_
+
+- [x] 23.3 Implement autocomplete for model name inputs
+
+
+  - Add autocomplete functionality to normalized name input fields
+  - Filter suggestions based on user input (prefix matching)
+  - Display top 5 matching suggestions with provider counts
+  - Allow keyboard navigation (arrow keys, enter to select)
+  - Update input value when suggestion is selected
+  - _Requirements: 20.3_
+
+- [x] 23.4 Add highlighting for matching names
+
+
+  - Highlight normalized names in sidebar that match current input
+  - Update highlights in real-time as user types
+  - Use distinct visual style (background color, border)
+  - _Requirements: 20.2_
+
+- [x] 23.5 Implement click-to-filter functionality
+
+  - Add click handler to normalized name items in sidebar
+  - When clicked, highlight models in current provider that could use that name
+  - Use similarity matching to suggest which models should be normalized
+  - Add visual indicator (border, background) to suggested model rows
+  - Clear highlights when another name is clicked or search is cleared
+  - _Requirements: 20.5_
+
+- [ ] 24. Final checkpoint - Test normalized name reference feature
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 25. Update uni-api YAML generation to use correct base_url format
+
+
+
+
+  - Implement channel-type-aware base_url generation
+  - Support OpenAI format: /v1/chat/completions
+  - Support Anthropic format: /v1/messages
+  - Support Gemini format: /v1beta
+  - Default to OpenAI format for unknown channel types
+  - _Requirements: 23.1, 23.2, 23.3, 23.4, 23.5_
+
+- [x] 25.1 Update build_base_url function
+
+
+  - Query provider channel_type from database
+  - Build path suffix based on channel type
+  - Construct full base_url with GPT-Load proxy path
+  - _Requirements: 23.1, 23.2, 23.3, 23.4_
+
+- [x] 25.2 Update generate_uniapi_yaml to use new base_url logic
+
+
+  - Call build_base_url for each provider entry
+  - Ensure aggregate groups use appropriate channel type
+  - Test with multiple channel types
+  - _Requirements: 23.1, 23.2, 23.3_
+
+- [x] 26. Implement intelligent YAML file merging
+
+
+
+
+
+  - Read existing api.yaml file if it exists
+  - Remove dummy provider entries
+  - Preserve existing api_keys and preferences
+  - Merge generated providers with existing configuration
+  - _Requirements: 22.1, 22.2, 22.3, 22.4, 22.5_
+
+- [x] 26.1 Implement existing file reading and parsing
+
+
+  - Check if /app/uni-api-config/api.yaml exists
+  - Parse existing YAML using PyYAML
+  - Handle malformed YAML with error logging
+  - _Requirements: 22.1, 22.5_
+
+- [x] 26.2 Implement dummy provider removal
+
+
+  - Filter out providers with name "provider_name"
+  - Preserve all other existing providers
+  - Log removal action
+  - _Requirements: 22.2_
+
+- [x] 26.3 Implement configuration section preservation
+
+
+  - Extract api_keys section from existing config
+  - Extract preferences section from existing config
+  - Use extracted sections in merged configuration
+  - Fall back to defaults if sections don't exist
+  - _Requirements: 22.3, 22.4_
+
+
+
+- [x] 26.4 Implement configuration merging logic
+
+  - Combine generated providers with preserved sections
+  - Ensure proper YAML structure
+  - Validate merged configuration
+  - _Requirements: 22.3, 22.4_
+
+- [x] 27. Ensure automatic YAML export on sync
+
+
+
+
+
+  - Verify sync service always exports YAML to disk
+  - Use default path if not specified
+  - Create directory if it doesn't exist
+  - Handle file write errors gracefully
+  - _Requirements: 21.1, 21.2, 21.3, 21.4, 21.5_
+
+- [x] 27.1 Verify default export path is set
+
+
+  - Check that sync_configuration_incremental sets default path
+  - Check that sync_configuration sets default path
+  - Ensure path is /app/uni-api-config/api.yaml
+  - _Requirements: 21.2_
+
+- [x] 27.2 Implement directory creation
+
+
+  - Add os.makedirs() call in export_uniapi_yaml_to_file
+  - Use exist_ok=True to avoid errors if directory exists
+  - Log directory creation action
+  - _Requirements: 21.3_
+
+- [x] 27.3 Implement file permission handling
+
+
+  - Set appropriate file permissions after write
+  - Ensure uni-api container can read the file
+  - Log permission setting action
+  - _Requirements: 21.4_
+
+- [x] 27.4 Add error handling for file operations
+
+
+  - Catch IOError and OSError exceptions
+  - Log detailed error messages
+  - Include error in sync result
+  - Don't fail entire sync if file write fails
+  - _Requirements: 21.5_
+
+- [ ] 28. Test uni-api YAML generation with real scenarios
+  - Test with OpenAI providers
+  - Test with Anthropic providers
+  - Test with Gemini providers
+  - Test with mixed provider types
+  - Test appending to existing minimal config
+  - Test dummy provider removal
+  - Verify file is written to disk
+  - Verify uni-api container can read the file
+  - _Requirements: 21.1, 22.1, 22.2, 23.1, 23.2, 23.3_
+
+- [ ] 29. Final checkpoint - Verify uni-api integration
+  - Ensure all tests pass, ask the user if questions arise.

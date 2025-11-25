@@ -57,6 +57,16 @@ def init_db():
     # Create all tables
     Base.metadata.create_all(bind=engine)
     
+    # Run migrations for existing databases
+    if existing_tables:
+        logger.info("Running database migrations...")
+        from app.database.migrations import migrate_database
+        db = SessionLocal()
+        try:
+            migrate_database(db)
+        finally:
+            db.close()
+    
     # Verify tables were created
     inspector = inspect(engine)
     created_tables = inspector.get_table_names()

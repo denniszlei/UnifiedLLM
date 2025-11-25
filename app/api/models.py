@@ -260,3 +260,38 @@ async def batch_normalize_models(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to batch normalize models: {str(e)}")
+
+
+class NormalizedNameInfo(BaseModel):
+    """Normalized name information."""
+
+    name: str
+    provider_count: int
+    model_count: int
+
+
+@router.get("/models/normalized-names", response_model=List[NormalizedNameInfo])
+async def get_normalized_names(
+    db: Session = Depends(get_db),
+    service: ModelService = Depends(get_model_service)
+):
+    """Get all unique normalized model names with usage counts.
+    
+    Returns a list of normalized model names across all providers, ordered by
+    provider count (descending) then name (ascending).
+    
+    Requirements: 20.1, 20.4
+    """
+    try:
+        normalized_names = service.get_normalized_names_with_counts(db)
+        
+        return [
+            NormalizedNameInfo(
+                name=name,
+                provider_count=counts["provider_count"],
+                model_count=counts["model_count"]
+            )
+            for name, counts in normalized_names.items()
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get normalized names: {str(e)}")

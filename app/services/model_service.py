@@ -550,3 +550,55 @@ class ModelService:
             db.rollback()
             logger.error(f"Failed to batch normalize models: {e}")
             raise
+
+    def get_normalized_names_with_counts(self, db: Session) -> Dict[str, Dict[str, int]]:
+        """Get all unique normalized model names with usage counts.
+        
+        Returns normalized names across all providers with counts of how many
+        providers and models use each name. Results are ordered by provider_count
+        descending, then name ascending.
+        
+        Args:
+            db: Database session.
+            
+        Returns:
+            Ordered dictionary mapping normalized names to dictionaries with:
+                - provider_count: Number of unique providers using this name
+                - model_count: Total number of models with this name
+        """
+        # Get all active models
+        models = db.query(Model).filter(Model.is_active == True).all()
+        
+        # Group by effective normalized name
+        name_data: Dict[str, Dict[str, set]] = {}
+        
+        for model in models:
+            effective_name = model.normalized_name if model.normalized_name else model.original_name
+            
+            if effective_name not in name_data:
+                name_data[effective_name] = {
+                    'providers': set(),
+                    'model_ids': set()
+                }
+            
+            name_data[effective_name]['providers'].add(model.provider_id)
+            name_data[effective_name]['model_ids'].add(model.id)
+        
+        # Convert to counts and sort
+        result = {}
+        for name, data in name_data.items():
+            result[name] = {
+                'provider_count': len(data['providers']),
+                'model_count': len(data['model_ids'])
+            }
+        
+        # Sort by provider_count DESC, then name ASC
+        sorted_result = dict(
+            sorted(
+                result.items(),
+                key=lambda item: (-item[1]['provider_count'], item[0])
+            )
+        )
+        
+        logger.info(f"Found {len(sorted_result)} unique normalized model names")
+        return sorted_result

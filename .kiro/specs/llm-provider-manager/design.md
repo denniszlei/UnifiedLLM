@@ -292,8 +292,12 @@ Property 8: Aggregate group creation for duplicates
 **Validates: Requirements 5.3, 5.4**
 
 Property 9: uni-api YAML structure
-*For any* generated uni-api configuration, the YAML should contain one provider entry per GPT-Load aggregate group plus one entry per standard group with non-duplicate models, each with empty model lists and correct GPT-Load proxy endpoints
-**Validates: Requirements 6.2, 6.3, 6.4, 6.5**
+*For any* generated uni-api configuration, the YAML should contain one provider entry per GPT-Load aggregate group plus one entry per standard group whose name ends with "-no-aggregate-models", each with empty model lists and correct GPT-Load proxy endpoints
+**Validates: Requirements 6.2, 6.3, 6.5, 6.6**
+
+Property 9a: uni-api YAML excludes sub-groups
+*For any* generated uni-api configuration, the YAML should NOT contain provider entries for standard groups that are sub-groups of aggregate groups (i.e., groups that don't end with "-no-aggregate-models")
+**Validates: Requirements 6.4**
 
 Property 10: Configuration consistency after deletion
 *For any* model that is deleted, the generated GPT-Load and uni-api configurations should not include that model in any group or provider entry
@@ -383,6 +387,58 @@ Property 30: Save button visibility
 Property 31: Save confirmation summary accuracy
 *For any* save confirmation dialog, the displayed counts for renames and deletions should match the actual number of pending changes
 **Validates: Requirements 16.4**
+
+Property 32: Incremental sync updates only affected groups
+*For any* configuration change, only the groups directly affected should be modified in GPT-Load
+**Validates: Requirements 17.1, 17.2, 17.3, 17.7**
+
+Property 33: Aggregate cleanup on membership change
+*For any* aggregate group with only one remaining sub-group, the aggregate should be deleted
+**Validates: Requirements 17.4, 17.6**
+
+Property 34: Save button visibility at bottom
+*For any* model list, the "Save Changes" button should be visible at the bottom
+**Validates: Requirements 18.1**
+
+Property 35: Normalized model name list completeness
+*For any* provider detail view, the displayed list of normalized model names should include all unique normalized names from all providers in the system
+**Validates: Requirements 20.1**
+
+Property 36: Autocomplete suggestions accuracy
+*For any* text input in the model name field, the autocomplete suggestions should only include normalized model names that match the input prefix
+**Validates: Requirements 20.3**
+
+Property 37: Normalized name usage count accuracy
+*For any* normalized model name displayed in the reference list, the count should equal the number of providers that have at least one model normalized to that name
+**Validates: Requirements 20.4**
+
+Property 38: Automatic YAML file export on sync
+*For any* sync operation that completes successfully, the uni-api YAML file should be written to disk at the configured path
+**Validates: Requirements 21.1, 21.2**
+
+Property 39: YAML file directory creation
+*For any* export path where the directory does not exist, the system should create the directory before writing the file
+**Validates: Requirements 21.3**
+
+Property 40: Dummy provider removal
+*For any* existing api.yaml file containing a provider named "provider_name", the generated configuration should not include that provider
+**Validates: Requirements 22.2**
+
+Property 41: Configuration section preservation
+*For any* existing api.yaml file with api_keys and preferences sections, the generated configuration should preserve those sections
+**Validates: Requirements 22.3**
+
+Property 42: Base URL format by channel type
+*For any* provider entry generated for an OpenAI-compatible channel, the base_url should end with /v1/chat/completions
+**Validates: Requirements 23.1**
+
+Property 43: Anthropic base URL format
+*For any* provider entry generated for an Anthropic-compatible channel, the base_url should end with /v1/messages
+**Validates: Requirements 23.2**
+
+Property 44: Gemini base URL format
+*For any* provider entry generated for a Gemini-compatible channel, the base_url should end with /v1beta
+**Validates: Requirements 23.3**
 
 ## Error Handling
 
@@ -585,13 +641,13 @@ Then add sub-groups:
 providers:
   # Aggregate groups (for duplicate models)
   - provider: "deepseek-v3-1-aggregate"
-    base_url: "http://gptload:3001/proxy/deepseek-v3-1-aggregate"
+    base_url: "http://gptload:3001/proxy/deepseek-v3-1-aggregate/v1/chat/completions"
     api: "gptload-auth-key"
     model: []  # Empty to auto-fetch from GPT-Load
     
   # Standard groups (for non-duplicate models)
   - provider: "providerA-no-aggregate"
-    base_url: "http://gptload:3001/proxy/providerA-no-aggregate_models"
+    base_url: "http://gptload:3001/proxy/providerA-no-aggregate_models/v1/chat/completions"
     api: "gptload-auth-key"
     model: []  # Empty to auto-fetch from GPT-Load
 
@@ -605,20 +661,165 @@ preferences:
   rate_limit: "999999/min"
 ```
 
-**Note**: base_url contains only the proxy path without `/v1/chat/completions` suffix
+**Note**: base_url format varies by provider channel type according to uni-api specifications:
+- OpenAI-compatible: `http://gptload:3001/proxy/{group_name}/v1/chat/completions`
+- Anthropic-compatible: `http://gptload:3001/proxy/{group_name}/v1/messages`
+- Gemini-compatible: `http://gptload:3001/proxy/{group_name}/v1beta`
 
 ### Generation Logic
 
 1. Query all GPT-Load groups from local database
-2. For each aggregate group:
+2. Read existing api.yaml file if it exists at `/app/uni-api-config/api.yaml`
+3. Parse existing YAML and remove dummy provider named "provider_name" if present
+4. For each aggregate group:
    - Create provider entry with aggregate group proxy endpoint
+   - Use appropriate base_url format based on channel type
    - Leave model list empty
-3. For each standard group with non-duplicate models:
+5. For each standard group whose name ends with "-no-aggregate-models":
    - Create provider entry with standard group proxy endpoint
+   - Use appropriate base_url format based on channel type
    - Leave model list empty
-4. Add default api_keys and preferences sections
-5. Validate YAML structure
-6. Write to file or return as string
+   - **Note**: Standard groups that are sub-groups of aggregates (not ending with "-no-aggregate-models") are intentionally excluded to prevent bypassing load balancing
+6. Preserve existing api_keys and preferences sections if they exist, otherwise use defaults
+7. Validate YAML structure
+8. Write to file at `/app/uni-api-config/api.yaml` (create directory if needed)
+9. Ensure proper file permissions for uni-api container to read
+
+### Why This Approach?
+
+**Problem**: If we include all standard groups in uni-api configuration, users could bypass load balancing by directly accessing sub-groups that are part of aggregate groups.
+
+**Solution**: Only expose:
+- **Aggregate groups**: Provide load-balanced access to duplicate models across providers
+- **"-no-aggregate-models" groups**: Provide direct access to non-duplicate models from each provider
+
+**Example**:
+```
+GPT-Load Groups:
+- aggregate-deepseek-v3-1 (contains: providera-1-deepseek-v3-1, providerb-1-deepseek-v3-1)
+- providera-1-deepseek-v3-1 (sub-group, should NOT be in uni-api)
+- providerb-1-deepseek-v3-1 (sub-group, should NOT be in uni-api)
+- providera-0-no-aggregate-models (contains non-duplicate models, SHOULD be in uni-api)
+- providerb-0-no-aggregate-models (contains non-duplicate models, SHOULD be in uni-api)
+
+uni-api Configuration:
+providers:
+  - provider: aggregate-deepseek-v3-1  ✓ (load-balanced access)
+  - provider: providera-0-no-aggregate-models  ✓ (non-duplicate models)
+  - provider: providerb-0-no-aggregate-models  ✓ (non-duplicate models)
+  # providera-1-deepseek-v3-1 is NOT included ✓ (prevents bypass)
+  # providerb-1-deepseek-v3-1 is NOT included ✓ (prevents bypass)
+```
+
+This ensures:
+- ✅ All models are accessible
+- ✅ Load balancing works correctly for duplicates
+- ✅ No way to bypass load balancing
+- ✅ Clean, minimal configuration
+
+### File Handling Strategy
+
+**Appending to Existing Configuration:**
+The system will intelligently merge generated providers with existing configuration:
+
+```python
+def generate_uniapi_yaml(db: Session) -> str:
+    # Read existing file if it exists
+    existing_config = None
+    if os.path.exists("/app/uni-api-config/api.yaml"):
+        with open("/app/uni-api-config/api.yaml", 'r') as f:
+            existing_config = yaml.safe_load(f)
+    
+    # Remove dummy provider if present
+    if existing_config and 'providers' in existing_config:
+        existing_config['providers'] = [
+            p for p in existing_config['providers'] 
+            if p.get('provider') != 'provider_name'
+        ]
+    
+    # Generate new providers from GPT-Load groups
+    new_providers = []
+    groups = get_gptload_groups(db)
+    
+    for group in groups:
+        base_url = build_base_url(group)
+        provider_entry = {
+            "provider": group.name,
+            "base_url": base_url,
+            "api": settings.gptload_auth_key,
+            "model": []
+        }
+        new_providers.append(provider_entry)
+    
+    # Merge configurations
+    if existing_config:
+        # Preserve existing api_keys and preferences
+        config = {
+            "providers": new_providers,
+            "api_keys": existing_config.get('api_keys', default_api_keys()),
+            "preferences": existing_config.get('preferences', default_preferences())
+        }
+    else:
+        # Create new configuration
+        config = {
+            "providers": new_providers,
+            "api_keys": default_api_keys(),
+            "preferences": default_preferences()
+        }
+    
+    return yaml.dump(config, default_flow_style=False, sort_keys=False)
+
+def build_base_url(group: GPTLoadGroup) -> str:
+    """Build base_url with correct path based on channel type."""
+    gptload_url = settings.gptload_url.rstrip('/')
+    group_name = group.name
+    
+    # Determine channel type from provider
+    if group.provider_id:
+        provider = get_provider(group.provider_id)
+        channel_type = provider.channel_type
+    else:
+        channel_type = "openai"  # Default for aggregate groups
+    
+    # Build path based on channel type
+    if channel_type == "anthropic":
+        path = "/v1/messages"
+    elif channel_type == "gemini":
+        path = "/v1beta"
+    else:  # openai and others
+        path = "/v1/chat/completions"
+    
+    return f"{gptload_url}/proxy/{group_name}{path}"
+```
+
+**Automatic File Writing:**
+The sync service will automatically write the YAML file to disk:
+
+```python
+async def sync_configuration_incremental(
+    self,
+    db: Session,
+    provider_ids: Optional[List[int]] = None,
+    export_yaml_path: Optional[str] = None
+) -> SyncRecord:
+    # ... existing sync logic ...
+    
+    # Step 2: Generate uni-api YAML
+    logger.info("Step 2: Generating uni-api YAML configuration")
+    yaml_content = self.config_generator.generate_uniapi_yaml(db)
+    
+    # Step 3: Export YAML (use default path if not provided)
+    if not export_yaml_path:
+        export_yaml_path = "/app/uni-api-config/api.yaml"
+    
+    logger.info(f"Step 3: Exporting uni-api YAML to {export_yaml_path}")
+    self.config_generator.export_uniapi_yaml_to_file(
+        db,
+        export_yaml_path
+    )
+    
+    # ... rest of sync logic ...
+```
 
 ## UI Design (ASCII Mockup)
 
@@ -1171,6 +1372,189 @@ window.addEventListener('beforeunload', (e) => {
 ║  [← Back] [Save Changes (8)]                                   ║
 ╚════════════════════════════════════════════════════════════════╝
 ```
+
+## Normalized Model Name Reference Display
+
+### Overview
+
+To help users maintain consistency when normalizing model names across providers, the system will display a reference list of all existing normalized model names. This prevents users from creating slight variations (e.g., "deepseek-v3.1" vs "deepseek-chat-v3.1") when they should use the same standardized name.
+
+### UI Components
+
+**Sidebar Panel:**
+```
+┌────────────────────────────────────┐
+│ Existing Normalized Models         │
+├────────────────────────────────────┤
+│ 🔍 [Search...]                     │
+├────────────────────────────────────┤
+│ deepseek-v3.1 (3 providers)        │
+│ gpt-4o (5 providers)               │
+│ gpt-4o-mini (4 providers)          │
+│ claude-3-5-sonnet (2 providers)    │
+│ gemini-2.0-flash (1 provider)      │
+│ ...                                │
+└────────────────────────────────────┘
+```
+
+**Autocomplete in Model Name Input:**
+```
+┌────────────────────────────────────┐
+│ Normalized Name:                   │
+│ ┌────────────────────────────────┐ │
+│ │ deepseek-v█                    │ │
+│ └────────────────────────────────┘ │
+│ ┌────────────────────────────────┐ │
+│ │ deepseek-v3.1 (3 providers)    │ │ ← Suggestion
+│ │ deepseek-v2.5 (2 providers)    │ │
+│ └────────────────────────────────┘ │
+└────────────────────────────────────┘
+```
+
+### API Endpoints
+
+**Get All Normalized Model Names:**
+```python
+@router.get("/models/normalized-names")
+async def get_normalized_names():
+    """
+    Returns all unique normalized model names with usage counts.
+    
+    Response:
+    {
+      "normalized_names": [
+        {
+          "name": "deepseek-v3.1",
+          "provider_count": 3,
+          "model_count": 5
+        },
+        ...
+      ]
+    }
+    """
+    pass
+```
+
+### Implementation Details
+
+**Database Query:**
+```sql
+SELECT 
+    normalized_name,
+    COUNT(DISTINCT provider_id) as provider_count,
+    COUNT(*) as model_count
+FROM models
+WHERE normalized_name IS NOT NULL 
+  AND is_active = TRUE
+GROUP BY normalized_name
+ORDER BY provider_count DESC, normalized_name ASC;
+```
+
+**Frontend State Management:**
+```javascript
+// Load normalized names on page load
+async function loadNormalizedNames() {
+  const response = await fetch('/api/models/normalized-names');
+  const data = await response.json();
+  
+  normalizedNamesCache = data.normalized_names;
+  updateSidebar(normalizedNamesCache);
+  initializeAutocomplete(normalizedNamesCache);
+}
+
+// Autocomplete implementation
+function initializeAutocomplete(names) {
+  const inputs = document.querySelectorAll('.model-name-input');
+  inputs.forEach(input => {
+    input.addEventListener('input', (e) => {
+      const value = e.target.value.toLowerCase();
+      const suggestions = names
+        .filter(n => n.name.toLowerCase().startsWith(value))
+        .slice(0, 5);
+      showSuggestions(input, suggestions);
+    });
+  });
+}
+```
+
+**Highlighting Matches:**
+When a user types in the input field, the sidebar will highlight matching normalized names:
+```javascript
+function highlightMatches(searchTerm) {
+  const items = document.querySelectorAll('.normalized-name-item');
+  items.forEach(item => {
+    const name = item.dataset.name.toLowerCase();
+    if (name.includes(searchTerm.toLowerCase())) {
+      item.classList.add('highlighted');
+    } else {
+      item.classList.remove('highlighted');
+    }
+  });
+}
+```
+
+**Click to Filter:**
+When a user clicks a normalized name in the sidebar, highlight models in the current provider that could use that name:
+```javascript
+function handleNormalizedNameClick(normalizedName) {
+  const modelRows = document.querySelectorAll('.model-row');
+  modelRows.forEach(row => {
+    const originalName = row.dataset.originalName.toLowerCase();
+    const currentNormalized = row.dataset.normalizedName.toLowerCase();
+    
+    // Highlight if original name is similar to the clicked normalized name
+    if (isSimilar(originalName, normalizedName) && 
+        currentNormalized !== normalizedName) {
+      row.classList.add('suggestion-highlight');
+    } else {
+      row.classList.remove('suggestion-highlight');
+    }
+  });
+}
+
+function isSimilar(str1, str2) {
+  // Simple similarity check - can be enhanced
+  const normalized1 = str1.replace(/[^a-z0-9]/g, '');
+  const normalized2 = str2.replace(/[^a-z0-9]/g, '');
+  return normalized1.includes(normalized2) || normalized2.includes(normalized1);
+}
+```
+
+### Updated Provider Detail View Mockup
+
+```
+╔════════════════════════════════════════════════════════════════════════════╗
+║  Provider A                                              [Fetch Models]    ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                             ║
+║  ┌─────────────────────────┐  ┌──────────────────────────────────────────┐║
+║  │ Normalized Models       │  │ Models (15)                              │║
+║  │ (Reference)             │  │                                          │║
+║  ├─────────────────────────┤  │ Original Name    │ Normalized Name      │║
+║  │ 🔍 [Search...]          │  ├──────────────────┼──────────────────────┤║
+║  ├─────────────────────────┤  │ deepseek-v3.1    │ [deepseek-v3█]      │║
+║  │ deepseek-v3.1 (3) ✓     │  │                  │ ┌──────────────────┐│║
+║  │ deepseek-v2.5 (2)       │  │                  │ │deepseek-v3.1 (3) ││║
+║  │ gpt-4o (5)              │  │                  │ │deepseek-v2.5 (2) ││║
+║  │ gpt-4o-mini (4)         │  │                  │ └──────────────────┘│║
+║  │ claude-3-5-sonnet (2)   │  │                  │                      │║
+║  │ gemini-2.0-flash (1)    │  │ Deepseek-V3.1    │ deepseek-v3.1 ⚠️    │║
+║  │ ...                     │  │ gpt-4o           │ gpt-4o               │║
+║  └─────────────────────────┘  └──────────────────────────────────────────┘║
+║                                                                             ║
+║  ⚠️ Duplicate detected: 2 models normalized to "deepseek-v3.1"            ║
+║                                                                             ║
+║  [← Back] [Save Changes (5)]                                               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Benefits
+
+1. **Consistency**: Users can see what normalized names already exist
+2. **Efficiency**: Autocomplete speeds up the normalization process
+3. **Error Prevention**: Reduces typos and variations in normalized names
+4. **Discoverability**: Users can see popular/common normalized names
+5. **Context**: Provider count shows which names are widely used
 
 ## Future Enhancements
 

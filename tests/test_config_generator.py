@@ -335,3 +335,648 @@ def test_export_uniapi_yaml_to_file(config_generator, db_session, tmp_path):
         content = f.read()
         assert "providers:" in content
         assert "test-group" in content
+
+
+def test_build_base_url_openai(config_generator, db_session, encryption_service):
+    """Test build_base_url for OpenAI channel type."""
+    # Create provider with OpenAI channel type
+    provider = Provider(
+        name="test-openai",
+        base_url="https://api.openai.com",
+        api_key_encrypted=encryption_service.encrypt("test-key"),
+        channel_type="openai"
+    )
+    db_session.add(provider)
+    db_session.commit()
+    
+    # Create standard group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-openai-group",
+        group_type="standard",
+        provider_id=provider.id
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Build base URL
+    base_url = config_generator.build_base_url(
+        db_session,
+        group,
+        "http://localhost:3001"
+    )
+    
+    # Verify OpenAI format
+    assert base_url == "http://localhost:3001/proxy/test-openai-group/v1/chat/completions"
+
+
+def test_build_base_url_anthropic(config_generator, db_session, encryption_service):
+    """Test build_base_url for Anthropic channel type."""
+    # Create provider with Anthropic channel type
+    provider = Provider(
+        name="test-anthropic",
+        base_url="https://api.anthropic.com",
+        api_key_encrypted=encryption_service.encrypt("test-key"),
+        channel_type="anthropic"
+    )
+    db_session.add(provider)
+    db_session.commit()
+    
+    # Create standard group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-anthropic-group",
+        group_type="standard",
+        provider_id=provider.id
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Build base URL
+    base_url = config_generator.build_base_url(
+        db_session,
+        group,
+        "http://localhost:3001"
+    )
+    
+    # Verify Anthropic format
+    assert base_url == "http://localhost:3001/proxy/test-anthropic-group/v1/messages"
+
+
+def test_build_base_url_gemini(config_generator, db_session, encryption_service):
+    """Test build_base_url for Gemini channel type."""
+    # Create provider with Gemini channel type
+    provider = Provider(
+        name="test-gemini",
+        base_url="https://generativelanguage.googleapis.com",
+        api_key_encrypted=encryption_service.encrypt("test-key"),
+        channel_type="gemini"
+    )
+    db_session.add(provider)
+    db_session.commit()
+    
+    # Create standard group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-gemini-group",
+        group_type="standard",
+        provider_id=provider.id
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Build base URL
+    base_url = config_generator.build_base_url(
+        db_session,
+        group,
+        "http://localhost:3001"
+    )
+    
+    # Verify Gemini format
+    assert base_url == "http://localhost:3001/proxy/test-gemini-group/v1beta"
+
+
+def test_build_base_url_unknown_defaults_to_openai(config_generator, db_session, encryption_service):
+    """Test build_base_url defaults to OpenAI format for unknown channel types."""
+    # Create provider with unknown channel type
+    provider = Provider(
+        name="test-unknown",
+        base_url="https://api.unknown.com",
+        api_key_encrypted=encryption_service.encrypt("test-key"),
+        channel_type="unknown"
+    )
+    db_session.add(provider)
+    db_session.commit()
+    
+    # Create standard group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-unknown-group",
+        group_type="standard",
+        provider_id=provider.id
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Build base URL
+    base_url = config_generator.build_base_url(
+        db_session,
+        group,
+        "http://localhost:3001"
+    )
+    
+    # Verify defaults to OpenAI format
+    assert base_url == "http://localhost:3001/proxy/test-unknown-group/v1/chat/completions"
+
+
+def test_build_base_url_aggregate_defaults_to_openai(config_generator, db_session):
+    """Test build_base_url defaults to OpenAI format for aggregate groups."""
+    # Create aggregate group (no provider_id)
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-aggregate",
+        group_type="aggregate",
+        provider_id=None,
+        normalized_model="gpt-4"
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Build base URL
+    base_url = config_generator.build_base_url(
+        db_session,
+        group,
+        "http://localhost:3001"
+    )
+    
+    # Verify defaults to OpenAI format
+    assert base_url == "http://localhost:3001/proxy/test-aggregate/v1/chat/completions"
+
+
+def test_generate_uniapi_yaml_with_multiple_channel_types(config_generator, db_session, encryption_service):
+    """Test uni-api YAML generation with multiple channel types."""
+    # Create providers with different channel types
+    providers = [
+        Provider(
+            name="openai-provider",
+            base_url="https://api.openai.com",
+            api_key_encrypted=encryption_service.encrypt("key1"),
+            channel_type="openai"
+        ),
+        Provider(
+            name="anthropic-provider",
+            base_url="https://api.anthropic.com",
+            api_key_encrypted=encryption_service.encrypt("key2"),
+            channel_type="anthropic"
+        ),
+        Provider(
+            name="gemini-provider",
+            base_url="https://generativelanguage.googleapis.com",
+            api_key_encrypted=encryption_service.encrypt("key3"),
+            channel_type="gemini"
+        )
+    ]
+    for provider in providers:
+        db_session.add(provider)
+    db_session.commit()
+    
+    # Create groups for each provider
+    groups = [
+        GPTLoadGroup(
+            gptload_group_id=1,
+            name="openai-group",
+            group_type="standard",
+            provider_id=providers[0].id
+        ),
+        GPTLoadGroup(
+            gptload_group_id=2,
+            name="anthropic-group",
+            group_type="standard",
+            provider_id=providers[1].id
+        ),
+        GPTLoadGroup(
+            gptload_group_id=3,
+            name="gemini-group",
+            group_type="standard",
+            provider_id=providers[2].id
+        )
+    ]
+    for group in groups:
+        db_session.add(group)
+    db_session.commit()
+    
+    # Generate YAML
+    yaml_content = config_generator.generate_uniapi_yaml(
+        db_session,
+        gptload_base_url="http://localhost:3001",
+        gptload_auth_key="test-key"
+    )
+    
+    # Verify each channel type has correct path
+    assert "http://localhost:3001/proxy/openai-group/v1/chat/completions" in yaml_content
+    assert "http://localhost:3001/proxy/anthropic-group/v1/messages" in yaml_content
+    assert "http://localhost:3001/proxy/gemini-group/v1beta" in yaml_content
+
+
+def test_read_existing_yaml_file_exists(config_generator, tmp_path):
+    """Test reading existing YAML file when it exists."""
+    # Create a test YAML file
+    yaml_file = tmp_path / "api.yaml"
+    yaml_content = """
+providers:
+  - provider: existing-provider
+    base_url: http://example.com
+    api: existing-key
+    model: []
+api_keys:
+  - api: custom-key
+    role: admin
+    model: ["all"]
+preferences:
+  rate_limit: "1000/min"
+"""
+    yaml_file.write_text(yaml_content)
+    
+    # Read the file
+    result = config_generator._read_existing_yaml(str(yaml_file))
+    
+    # Verify content
+    assert result is not None
+    assert "providers" in result
+    assert len(result["providers"]) == 1
+    assert result["providers"][0]["provider"] == "existing-provider"
+    assert "api_keys" in result
+    assert "preferences" in result
+
+
+def test_read_existing_yaml_file_not_exists(config_generator):
+    """Test reading existing YAML file when it doesn't exist."""
+    result = config_generator._read_existing_yaml("/nonexistent/path/api.yaml")
+    assert result is None
+
+
+def test_read_existing_yaml_malformed(config_generator, tmp_path):
+    """Test reading malformed YAML file."""
+    # Create a malformed YAML file
+    yaml_file = tmp_path / "api.yaml"
+    yaml_file.write_text("invalid: yaml: content: [")
+    
+    # Should return None and log error
+    result = config_generator._read_existing_yaml(str(yaml_file))
+    assert result is None
+
+
+def test_read_existing_yaml_empty_file(config_generator, tmp_path):
+    """Test reading empty YAML file."""
+    # Create an empty YAML file
+    yaml_file = tmp_path / "api.yaml"
+    yaml_file.write_text("")
+    
+    # Should return None
+    result = config_generator._read_existing_yaml(str(yaml_file))
+    assert result is None
+
+
+def test_remove_dummy_providers(config_generator):
+    """Test removing dummy provider entries."""
+    config = {
+        "providers": [
+            {"provider": "provider_name", "base_url": "http://dummy.com"},
+            {"provider": "real-provider", "base_url": "http://real.com"},
+            {"provider": "provider_name", "base_url": "http://dummy2.com"},
+            {"provider": "another-real", "base_url": "http://another.com"}
+        ]
+    }
+    
+    result = config_generator._remove_dummy_providers(config)
+    
+    # Verify dummy providers are removed
+    assert len(result["providers"]) == 2
+    assert all(p["provider"] != "provider_name" for p in result["providers"])
+    assert result["providers"][0]["provider"] == "real-provider"
+    assert result["providers"][1]["provider"] == "another-real"
+
+
+def test_remove_dummy_providers_no_providers(config_generator):
+    """Test removing dummy providers when no providers key exists."""
+    config = {"api_keys": []}
+    result = config_generator._remove_dummy_providers(config)
+    assert result == config
+
+
+def test_remove_dummy_providers_empty_list(config_generator):
+    """Test removing dummy providers from empty list."""
+    config = {"providers": []}
+    result = config_generator._remove_dummy_providers(config)
+    assert result["providers"] == []
+
+
+def test_extract_api_keys_section_exists(config_generator):
+    """Test extracting api_keys section when it exists."""
+    config = {
+        "api_keys": [
+            {"api": "custom-key", "role": "admin", "model": ["all"]}
+        ]
+    }
+    
+    result = config_generator._extract_api_keys_section(config)
+    
+    assert len(result) == 1
+    assert result[0]["api"] == "custom-key"
+    assert result[0]["role"] == "admin"
+
+
+def test_extract_api_keys_section_not_exists(config_generator):
+    """Test extracting api_keys section when it doesn't exist."""
+    config = {"providers": []}
+    
+    result = config_generator._extract_api_keys_section(config)
+    
+    # Should return default
+    assert len(result) == 1
+    assert result[0]["api"] == "sk-user-key"
+    assert result[0]["role"] == "user"
+
+
+def test_extract_api_keys_section_no_config(config_generator):
+    """Test extracting api_keys section when config is None."""
+    result = config_generator._extract_api_keys_section(None)
+    
+    # Should return default
+    assert len(result) == 1
+    assert result[0]["api"] == "sk-user-key"
+
+
+def test_extract_preferences_section_exists(config_generator):
+    """Test extracting preferences section when it exists."""
+    config = {
+        "preferences": {
+            "rate_limit": "1000/min",
+            "custom_setting": "value"
+        }
+    }
+    
+    result = config_generator._extract_preferences_section(config)
+    
+    assert result["rate_limit"] == "1000/min"
+    assert result["custom_setting"] == "value"
+
+
+def test_extract_preferences_section_not_exists(config_generator):
+    """Test extracting preferences section when it doesn't exist."""
+    config = {"providers": []}
+    
+    result = config_generator._extract_preferences_section(config)
+    
+    # Should return default
+    assert result["rate_limit"] == "999999/min"
+
+
+def test_extract_preferences_section_no_config(config_generator):
+    """Test extracting preferences section when config is None."""
+    result = config_generator._extract_preferences_section(None)
+    
+    # Should return default
+    assert result["rate_limit"] == "999999/min"
+
+
+def test_merge_configuration(config_generator):
+    """Test merging configuration components."""
+    providers = [
+        {"provider": "test-provider", "base_url": "http://test.com"}
+    ]
+    api_keys = [
+        {"api": "custom-key", "role": "admin"}
+    ]
+    preferences = {
+        "rate_limit": "1000/min"
+    }
+    
+    result = config_generator._merge_configuration(
+        providers,
+        api_keys,
+        preferences
+    )
+    
+    assert "providers" in result
+    assert "api_keys" in result
+    assert "preferences" in result
+    assert result["providers"] == providers
+    assert result["api_keys"] == api_keys
+    assert result["preferences"] == preferences
+
+
+def test_generate_uniapi_yaml_with_existing_file(config_generator, db_session, tmp_path):
+    """Test generating uni-api YAML with existing file merging."""
+    # Create existing YAML file with custom settings
+    yaml_file = tmp_path / "api.yaml"
+    existing_content = """
+providers:
+  - provider: provider_name
+    base_url: http://dummy.com
+    api: dummy-key
+    model: []
+  - provider: existing-provider
+    base_url: http://existing.com
+    api: existing-key
+    model: []
+api_keys:
+  - api: custom-admin-key
+    role: admin
+    model: ["all"]
+preferences:
+  rate_limit: "5000/min"
+  custom_setting: "preserved"
+"""
+    yaml_file.write_text(existing_content)
+    
+    # Create a test group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="new-group",
+        group_type="standard",
+        provider_id=1
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Generate YAML with existing file
+    yaml_content = config_generator.generate_uniapi_yaml(
+        db_session,
+        gptload_base_url="http://localhost:3001",
+        gptload_auth_key="test-key",
+        existing_yaml_path=str(yaml_file)
+    )
+    
+    # Verify dummy provider is removed
+    assert "provider_name" not in yaml_content
+    
+    # Verify new group is added
+    assert "new-group" in yaml_content
+    
+    # Verify custom api_keys are preserved
+    assert "custom-admin-key" in yaml_content
+    assert "admin" in yaml_content
+    
+    # Verify custom preferences are preserved
+    assert "5000/min" in yaml_content
+    assert "custom_setting" in yaml_content
+    assert "preserved" in yaml_content
+
+
+def test_export_uniapi_yaml_to_file_with_merging(config_generator, db_session, tmp_path, encryption_service):
+    """Test exporting uni-api YAML to file with existing file merging."""
+    # Create existing YAML file
+    yaml_file = tmp_path / "api.yaml"
+    existing_content = """
+providers:
+  - provider: provider_name
+    base_url: http://dummy.com
+    api: dummy-key
+    model: []
+api_keys:
+  - api: preserved-key
+    role: user
+    model: ["all"]
+preferences:
+  rate_limit: "2000/min"
+"""
+    yaml_file.write_text(existing_content)
+    
+    # Create a test group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-group",
+        group_type="standard",
+        provider_id=1
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Export to file (should merge with existing)
+    result_path = config_generator.export_uniapi_yaml_to_file(
+        db_session,
+        str(yaml_file),
+        gptload_base_url="http://localhost:3001",
+        gptload_auth_key="test-key"
+    )
+    
+    # Read the file
+    with open(yaml_file, 'r') as f:
+        content = f.read()
+    
+    # Verify dummy provider is removed
+    assert "provider_name" not in content
+    
+    # Verify new group is added
+    assert "test-group" in content
+    
+    # Verify preserved settings
+    assert "preserved-key" in content
+    assert "2000/min" in content
+
+
+def test_generate_uniapi_yaml_no_existing_file(config_generator, db_session):
+    """Test generating uni-api YAML when no existing file exists."""
+    # Create a test group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-group",
+        group_type="standard",
+        provider_id=1
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Generate YAML with non-existent file path
+    yaml_content = config_generator.generate_uniapi_yaml(
+        db_session,
+        gptload_base_url="http://localhost:3001",
+        gptload_auth_key="test-key",
+        existing_yaml_path="/nonexistent/api.yaml"
+    )
+    
+    # Verify default sections are used
+    assert "sk-user-key" in yaml_content
+    assert "999999/min" in yaml_content
+    assert "test-group" in yaml_content
+
+
+def test_export_uniapi_yaml_creates_directory(config_generator, db_session, tmp_path):
+    """Test that export creates directory if it doesn't exist."""
+    # Create a test group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-group",
+        group_type="standard",
+        provider_id=1,
+        normalized_model=None
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Use a nested directory path that doesn't exist
+    nested_dir = tmp_path / "nested" / "directory" / "structure"
+    file_path = nested_dir / "api.yaml"
+    
+    # Export should create the directory
+    result_path = config_generator.export_uniapi_yaml_to_file(
+        db_session,
+        str(file_path),
+        gptload_base_url="http://localhost:3001",
+        gptload_auth_key="test-key"
+    )
+    
+    # Verify directory was created
+    assert nested_dir.exists()
+    assert nested_dir.is_dir()
+    
+    # Verify file was written
+    assert os.path.exists(result_path)
+    with open(result_path, 'r') as f:
+        content = f.read()
+        assert "test-group" in content
+
+
+def test_export_uniapi_yaml_sets_permissions(config_generator, db_session, tmp_path):
+    """Test that export sets proper file permissions."""
+    # Create a test group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-group",
+        group_type="standard",
+        provider_id=1,
+        normalized_model=None
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Export to file
+    file_path = tmp_path / "api.yaml"
+    config_generator.export_uniapi_yaml_to_file(
+        db_session,
+        str(file_path),
+        gptload_base_url="http://localhost:3001",
+        gptload_auth_key="test-key"
+    )
+    
+    # Verify file permissions (0o644 = readable by all, writable by owner)
+    # On Windows, this might not work exactly the same, so we just check the file exists
+    assert os.path.exists(str(file_path))
+    
+    # On Unix-like systems, verify permissions
+    if os.name != 'nt':  # Not Windows
+        stat_info = os.stat(str(file_path))
+        permissions = stat_info.st_mode & 0o777
+        assert permissions == 0o644
+
+
+def test_export_uniapi_yaml_handles_io_error(config_generator, db_session, tmp_path):
+    """Test that export handles IOError gracefully."""
+    # Create a test group
+    group = GPTLoadGroup(
+        gptload_group_id=1,
+        name="test-group",
+        group_type="standard",
+        provider_id=1,
+        normalized_model=None
+    )
+    db_session.add(group)
+    db_session.commit()
+    
+    # Create a file and then try to write to it as if it were a directory
+    # This will cause an error when trying to create a subdirectory
+    file_as_dir = tmp_path / "file.txt"
+    file_as_dir.write_text("test")
+    invalid_path = file_as_dir / "subdir" / "api.yaml"
+    
+    with pytest.raises(IOError) as exc_info:
+        config_generator.export_uniapi_yaml_to_file(
+            db_session,
+            str(invalid_path),
+            gptload_base_url="http://localhost:3001",
+            gptload_auth_key="test-key"
+        )
+    
+    # Verify error message contains useful information
+    assert "Failed to write" in str(exc_info.value)

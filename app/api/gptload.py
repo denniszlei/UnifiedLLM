@@ -71,3 +71,53 @@ async def get_gptload_status(db: Session = Depends(get_db)):
             group_count=0,
             error_message=str(e)
         )
+
+
+
+class GPTLoadGroupResponse(BaseModel):
+    """GPT-Load group response."""
+    
+    id: int
+    name: str
+    group_type: str
+    provider_name: Optional[str] = None
+    normalized_model: Optional[str] = None
+
+
+@router.get("/groups", response_model=list[GPTLoadGroupResponse])
+async def get_gptload_groups(db: Session = Depends(get_db)):
+    """Get list of all GPT-Load groups from local database.
+    
+    Returns all groups that have been synced to GPT-Load, including:
+    - Standard groups (per provider)
+    - Aggregate groups (for duplicate models)
+    
+    Requirements: 5.1, 5.3
+    """
+    try:
+        # Query all groups from database
+        groups = db.query(GPTLoadGroup).all()
+        
+        # Build response with provider names
+        from app.models.provider import Provider
+        
+        result = []
+        for group in groups:
+            provider_name = None
+            if group.provider_id:
+                provider = db.query(Provider).filter(Provider.id == group.provider_id).first()
+                if provider:
+                    provider_name = provider.name
+            
+            result.append(GPTLoadGroupResponse(
+                id=group.id,
+                name=group.name,
+                group_type=group.group_type,
+                provider_name=provider_name,
+                normalized_model=group.normalized_model
+            ))
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get groups: {str(e)}")

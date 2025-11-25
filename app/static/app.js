@@ -50,7 +50,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeEventListeners() {
     // Dashboard
     document.getElementById('addProviderBtn').addEventListener('click', () => openProviderModal());
-    document.getElementById('syncBtn').addEventListener('click', () => syncConfiguration());
+    
+    // GPT-Load Section
+    document.getElementById('showGroupsBtn').addEventListener('click', () => toggleGptloadGroups());
+    document.getElementById('syncGptloadBtn').addEventListener('click', () => syncToGptload());
+    
+    // uni-api Section
+    document.getElementById('toggleYamlBtn').addEventListener('click', () => toggleYamlPreview());
+    document.getElementById('generateConfigBtn').addEventListener('click', () => generateUniapiConfig());
+    document.getElementById('downloadYamlBtn').addEventListener('click', () => downloadUniapiYaml());
     
     // Provider Detail
     document.getElementById('backToListBtn').addEventListener('click', () => showDashboard());
@@ -80,7 +88,8 @@ function initializeEventListeners() {
 async function loadDashboard() {
     showView('dashboardView');
     await loadProviders();
-    await loadSyncStatus();
+    await loadGptloadStatus();
+    await loadUniapiConfig();
 }
 
 async function loadProviders() {
@@ -172,12 +181,17 @@ function displaySyncStatus(status) {
     statusDiv.innerHTML = statusText;
 }
 
+// State for normalized names
+let normalizedNames = [];
+let selectedNormalizedName = null;
+
 // Provider Detail Functions
 async function showProviderDetail(providerId) {
     currentProviderId = providerId;
     showView('providerDetailView');
     
     await loadProviderDetail(providerId);
+    await loadNormalizedNames();
     await loadModels(providerId);
 }
 
@@ -279,12 +293,16 @@ function renderModels(modelsList) {
         html += `<tr${isMarkedForDeletion ? ' class="marked-for-deletion"' : ''}>`;
         html += `<td>${escapeHtml(model.original_name)}</td>`;
         html += `<td>
-            <input type="text" 
-                   class="model-name-input ${isEdited ? 'edited' : ''}" 
-                   value="${escapeHtml(editedValue)}"
-                   data-model-id="${model.id}"
-                   onchange="updateModelName(${model.id}, this.value)"
-                   ${isMarkedForDeletion ? 'disabled' : ''}>
+            <div class="autocomplete-container">
+                <input type="text" 
+                       class="model-name-input ${isEdited ? 'edited' : ''}" 
+                       value="${escapeHtml(editedValue)}"
+                       data-model-id="${model.id}"
+                       id="model-input-${model.id}"
+                       onchange="updateModelName(${model.id}, this.value)"
+                       ${isMarkedForDeletion ? 'disabled' : ''}>
+                <div class="autocomplete-dropdown" id="autocomplete-${model.id}"></div>
+            </div>
             ${isDuplicate ? '<div class="duplicate-warning">⚠️ Duplicate</div>' : ''}
         </td>`;
         html += `<td class="model-actions">
@@ -305,6 +323,13 @@ function renderModels(modelsList) {
     }
     
     container.innerHTML = html;
+    
+    // Set up autocomplete for each input
+    modelsList.forEach(model => {
+        if (!pendingChanges.isMarkedForDeletion(model.id)) {
+            setupAutocomplete(model.id);
+        }
+    });
     
     // Update save button visibility
     updateSaveButtonVisibility();
@@ -683,8 +708,10 @@ async function syncConfiguration() {
             messageDiv.textContent += ` ${result.summary}`;
         }
         
-        setTimeout(() => {
-            showDashboard();
+        setTimeout(async () => {
+            await showDashboard();
+            // Refresh uni-api config after successful sync
+            await loadUniapiConfig();
         }, 2000);
     } catch (error) {
         progressBar.style.width = '100%';
@@ -705,8 +732,8 @@ function showView(viewId) {
     document.getElementById(viewId).classList.add('active');
 }
 
-function showDashboard() {
-    loadDashboard();
+async function showDashboard() {
+    await loadDashboard();
 }
 
 // Utility Functions
@@ -967,6 +994,476 @@ function updateSaveButtonVisibility() {
     }
 }
 
+// uni-api Configuration Functions
+async function loadUniapiConfig() {
+    const contentDiv = document.getElementById('uniapiConfigContent');
+    const downloadBtn = document.getElementById('downloadYamlBtn');
+    
+    contentDiv.innerHTML = '<div class="loading">Loading configuration...</div>';
+    downloadBtn.disabled = true;
+    
+    try {
+        const response = await fetch(`${API_BASE}/config/uni-api/yaml`);
+        
+        if (!response.ok) {
+            if (response.status === 400) {
+                // No groups exist yet
+                displayEmptyUniapiState();
+                return;
+            }
+            throw new Error('Failed to load uni-api configuration');
+        }
+        
+        const yamlContent = await response.text();
+        
+        if (!yamlContent || yamlContent.trim() === '') {
+            displayEmptyUniapiState();
+            return;
+        }
+        
+        displayUniapiConfig(yamlContent);
+        downloadBtn.disabled = false;
+        
+    } catch (error) {
+        console.error('Failed to load uni-api config:', error);
+        contentDiv.innerHTML = `<div class="text-danger">Error loading configuration: ${error.message}</div>`;
+        downloadBtn.disabled = true;
+    }
+}
+
+function displayUniapiConfig(yamlContent) {
+    const contentDiv = document.getElementById('uniapiConfigContent');
+    
+    // Count providers and groups
+    const providerCount = (yamlContent.match(/- provider:/g) || []).length;
+    
+    let html = '';
+    
+    // Add metadata
+    html += '<div class="config-meta">';
+    html += '<div class="config-meta-item">';
+    html += '<span class="config-meta-label">Providers:</span>';
+    html += `<span class="config-meta-value">${providerCount}</span>`;
+    html += '</div>';
+    html += '<div class="config-meta-item">';
+    html += '<span class="config-meta-label">Status:</span>';
+    html += '<span class="config-meta-value">✓ Ready</span>';
+    html += '</div>';
+    html += '</div>';
+    
+    // Add YAML preview
+    html += '<div class="yaml-preview">';
+    html += escapeHtml(yamlContent);
+    html += '</div>';
+    
+    contentDiv.innerHTML = html;
+}
+
+function displayEmptyUniapiState() {
+    const contentDiv = document.getElementById('uniapiConfigContent');
+    const downloadBtn = document.getElementById('downloadYamlBtn');
+    
+    contentDiv.className = 'uniapi-config-content empty-state';
+    contentDiv.innerHTML = `
+        <div class="empty-state-icon">📄</div>
+        <div class="empty-state-message">No configuration available</div>
+        <div class="empty-state-hint">Run "Sync Configuration" to generate the uni-api config</div>
+    `;
+    
+    downloadBtn.disabled = true;
+}
+
+async function downloadUniapiYaml() {
+    try {
+        const response = await fetch(`${API_BASE}/config/uni-api/download`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to download configuration');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'api.yaml';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showMessage('success', 'Configuration downloaded successfully');
+    } catch (error) {
+        showMessage('error', `Failed to download configuration: ${error.message}`);
+    }
+}
+
+// Normalized Names Functions
+async function loadNormalizedNames() {
+    const listDiv = document.getElementById('normalizedNamesList');
+    listDiv.innerHTML = '<div class="loading">Loading...</div>';
+    
+    try {
+        const response = await fetch(`${API_BASE}/models/normalized-names`);
+        if (!response.ok) throw new Error('Failed to load normalized names');
+        
+        normalizedNames = await response.json();
+        renderNormalizedNames(normalizedNames);
+        
+        // Set up search functionality
+        const searchInput = document.getElementById('sidebarSearch');
+        searchInput.addEventListener('input', (e) => {
+            filterNormalizedNames(e.target.value);
+        });
+    } catch (error) {
+        console.error('Failed to load normalized names:', error);
+        listDiv.innerHTML = `<div class="text-danger">Error loading names</div>`;
+    }
+}
+
+function renderNormalizedNames(names, filter = '') {
+    const listDiv = document.getElementById('normalizedNamesList');
+    
+    if (names.length === 0) {
+        listDiv.innerHTML = '<div class="text-muted" style="padding: 10px; font-size: 13px;">No normalized names yet</div>';
+        return;
+    }
+    
+    // Filter names if search term provided
+    let filteredNames = names;
+    if (filter) {
+        const lowerFilter = filter.toLowerCase();
+        filteredNames = names.filter(n => n.name.toLowerCase().includes(lowerFilter));
+    }
+    
+    if (filteredNames.length === 0) {
+        listDiv.innerHTML = '<div class="text-muted" style="padding: 10px; font-size: 13px;">No matching names</div>';
+        return;
+    }
+    
+    listDiv.innerHTML = filteredNames.map(nameInfo => {
+        const isSelected = selectedNormalizedName === nameInfo.name;
+        return `
+            <div class="normalized-name-item ${isSelected ? 'selected' : ''}" 
+                 data-name="${escapeHtml(nameInfo.name)}"
+                 onclick="selectNormalizedName('${escapeHtml(nameInfo.name)}')">
+                <div class="normalized-name-text">${escapeHtml(nameInfo.name)}</div>
+                <div class="normalized-name-meta">
+                    <span>📦 ${nameInfo.provider_count} provider(s)</span>
+                    <span>🔢 ${nameInfo.model_count} model(s)</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterNormalizedNames(searchTerm) {
+    renderNormalizedNames(normalizedNames, searchTerm);
+    
+    // Also highlight matching names in real-time
+    if (searchTerm) {
+        highlightMatchingNames(searchTerm);
+    } else {
+        clearNameHighlights();
+    }
+}
+
+function highlightMatchingNames(searchTerm) {
+    const lowerSearch = searchTerm.toLowerCase();
+    const items = document.querySelectorAll('.normalized-name-item');
+    
+    items.forEach(item => {
+        const name = item.dataset.name;
+        if (name && name.toLowerCase().includes(lowerSearch)) {
+            item.classList.add('highlighted');
+        } else {
+            item.classList.remove('highlighted');
+        }
+    });
+}
+
+function highlightMatchingNamesInSidebar(inputValue) {
+    if (!inputValue || inputValue.length < 1) {
+        clearNameHighlights();
+        return;
+    }
+    
+    const lowerInput = inputValue.toLowerCase();
+    const items = document.querySelectorAll('.normalized-name-item');
+    
+    items.forEach(item => {
+        const name = item.dataset.name;
+        if (name && (
+            name.toLowerCase().startsWith(lowerInput) ||
+            name.toLowerCase().includes(lowerInput)
+        )) {
+            item.classList.add('highlighted');
+        } else {
+            item.classList.remove('highlighted');
+        }
+    });
+}
+
+function clearNameHighlights() {
+    const items = document.querySelectorAll('.normalized-name-item');
+    items.forEach(item => {
+        item.classList.remove('highlighted');
+        // Don't clear 'selected' class - that's for click selection
+    });
+}
+
+function selectNormalizedName(name) {
+    // Toggle selection
+    if (selectedNormalizedName === name) {
+        selectedNormalizedName = null;
+        clearSuggestions();
+    } else {
+        selectedNormalizedName = name;
+        suggestModelsForNormalization(name);
+    }
+    
+    // Update UI
+    const items = document.querySelectorAll('.normalized-name-item');
+    items.forEach(item => {
+        if (item.dataset.name === name && selectedNormalizedName === name) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+function suggestModelsForNormalization(normalizedName) {
+    // Clear previous suggestions
+    clearSuggestions();
+    
+    // Find models that could be normalized to this name using similarity matching
+    const rows = document.querySelectorAll('.models-table tbody tr');
+    
+    rows.forEach(row => {
+        const originalNameCell = row.querySelector('td:first-child');
+        if (!originalNameCell) return;
+        
+        const originalName = originalNameCell.textContent.trim();
+        const currentNormalizedInput = row.querySelector('.model-name-input');
+        const currentNormalizedName = currentNormalizedInput ? currentNormalizedInput.value : originalName;
+        
+        // Suggest if the original name is similar to the normalized name
+        // or if it's not already normalized to something else
+        if (isSimilar(originalName, normalizedName) && currentNormalizedName !== normalizedName) {
+            row.classList.add('suggested-for-normalization');
+        }
+    });
+}
+
+function clearSuggestions() {
+    const rows = document.querySelectorAll('.models-table tbody tr');
+    rows.forEach(row => row.classList.remove('suggested-for-normalization'));
+}
+
+function isSimilar(str1, str2) {
+    // Simple similarity check: case-insensitive comparison with some flexibility
+    const s1 = str1.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const s2 = str2.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Check if one contains the other or they're very similar
+    if (s1.includes(s2) || s2.includes(s1)) {
+        return true;
+    }
+    
+    // Check Levenshtein distance for close matches
+    const distance = levenshteinDistance(s1, s2);
+    const maxLength = Math.max(s1.length, s2.length);
+    const similarity = 1 - (distance / maxLength);
+    
+    return similarity > 0.6; // 60% similarity threshold
+}
+
+function levenshteinDistance(str1, str2) {
+    const matrix = [];
+    
+    for (let i = 0; i <= str2.length; i++) {
+        matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= str1.length; j++) {
+        matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= str2.length; i++) {
+        for (let j = 1; j <= str1.length; j++) {
+            if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j] + 1
+                );
+            }
+        }
+    }
+    
+    return matrix[str2.length][str1.length];
+}
+
+// Autocomplete Functions
+let autocompleteState = {
+    activeInput: null,
+    selectedIndex: -1
+};
+
+function setupAutocomplete(modelId) {
+    const input = document.getElementById(`model-input-${modelId}`);
+    const dropdown = document.getElementById(`autocomplete-${modelId}`);
+    
+    if (!input || !dropdown) return;
+    
+    // Handle input events
+    input.addEventListener('input', (e) => {
+        handleAutocompleteInput(modelId, e.target.value);
+        // Also highlight matching names in sidebar in real-time
+        highlightMatchingNamesInSidebar(e.target.value);
+    });
+    
+    // Handle focus
+    input.addEventListener('focus', (e) => {
+        autocompleteState.activeInput = modelId;
+        if (e.target.value) {
+            handleAutocompleteInput(modelId, e.target.value);
+            highlightMatchingNamesInSidebar(e.target.value);
+        }
+    });
+    
+    // Handle blur (with delay to allow click on dropdown)
+    input.addEventListener('blur', () => {
+        setTimeout(() => {
+            if (autocompleteState.activeInput === modelId) {
+                hideAutocomplete(modelId);
+                // Clear highlights when input loses focus
+                clearNameHighlights();
+            }
+        }, 200);
+    });
+    
+    // Handle keyboard navigation
+    input.addEventListener('keydown', (e) => {
+        handleAutocompleteKeydown(modelId, e);
+    });
+}
+
+function handleAutocompleteInput(modelId, value) {
+    const dropdown = document.getElementById(`autocomplete-${modelId}`);
+    if (!dropdown) return;
+    
+    if (!value || value.length < 1) {
+        hideAutocomplete(modelId);
+        return;
+    }
+    
+    // Filter normalized names by prefix match
+    const lowerValue = value.toLowerCase();
+    const matches = normalizedNames.filter(n => 
+        n.name.toLowerCase().startsWith(lowerValue) ||
+        n.name.toLowerCase().includes(lowerValue)
+    ).slice(0, 5); // Top 5 matches
+    
+    if (matches.length === 0) {
+        hideAutocomplete(modelId);
+        return;
+    }
+    
+    // Render suggestions
+    dropdown.innerHTML = matches.map((nameInfo, index) => `
+        <div class="autocomplete-item ${index === autocompleteState.selectedIndex ? 'selected' : ''}"
+             data-index="${index}"
+             data-name="${escapeHtml(nameInfo.name)}"
+             onmousedown="selectAutocompleteSuggestion(${modelId}, '${escapeHtml(nameInfo.name)}')">
+            <span class="autocomplete-name">${escapeHtml(nameInfo.name)}</span>
+            <span class="autocomplete-count">${nameInfo.provider_count} provider(s)</span>
+        </div>
+    `).join('');
+    
+    dropdown.classList.add('active');
+    autocompleteState.selectedIndex = -1;
+}
+
+function handleAutocompleteKeydown(modelId, e) {
+    const dropdown = document.getElementById(`autocomplete-${modelId}`);
+    if (!dropdown || !dropdown.classList.contains('active')) return;
+    
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+    if (items.length === 0) return;
+    
+    switch (e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            autocompleteState.selectedIndex = Math.min(
+                autocompleteState.selectedIndex + 1,
+                items.length - 1
+            );
+            updateAutocompleteSelection(dropdown, items);
+            break;
+            
+        case 'ArrowUp':
+            e.preventDefault();
+            autocompleteState.selectedIndex = Math.max(
+                autocompleteState.selectedIndex - 1,
+                -1
+            );
+            updateAutocompleteSelection(dropdown, items);
+            break;
+            
+        case 'Enter':
+            e.preventDefault();
+            if (autocompleteState.selectedIndex >= 0) {
+                const selectedItem = items[autocompleteState.selectedIndex];
+                const name = selectedItem.dataset.name;
+                selectAutocompleteSuggestion(modelId, name);
+            }
+            break;
+            
+        case 'Escape':
+            e.preventDefault();
+            hideAutocomplete(modelId);
+            break;
+    }
+}
+
+function updateAutocompleteSelection(dropdown, items) {
+    items.forEach((item, index) => {
+        if (index === autocompleteState.selectedIndex) {
+            item.classList.add('selected');
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+function selectAutocompleteSuggestion(modelId, name) {
+    const input = document.getElementById(`model-input-${modelId}`);
+    if (!input) return;
+    
+    input.value = name;
+    updateModelName(modelId, name);
+    hideAutocomplete(modelId);
+    
+    // Trigger change event
+    input.dispatchEvent(new Event('change'));
+}
+
+function hideAutocomplete(modelId) {
+    const dropdown = document.getElementById(`autocomplete-${modelId}`);
+    if (dropdown) {
+        dropdown.classList.remove('active');
+        dropdown.innerHTML = '';
+    }
+    autocompleteState.selectedIndex = -1;
+    if (autocompleteState.activeInput === modelId) {
+        autocompleteState.activeInput = null;
+    }
+}
+
 // Clean up on page unload
 window.addEventListener('beforeunload', (e) => {
     stopGPTLoadStatusPolling();
@@ -978,3 +1475,277 @@ window.addEventListener('beforeunload', (e) => {
         return e.returnValue;
     }
 });
+
+
+// GPT-Load Functions
+async function loadGptloadStatus() {
+    const statusDiv = document.getElementById('gptloadConnectionStatus');
+    const indicator = statusDiv.querySelector('.status-indicator');
+    const urlDiv = statusDiv.querySelector('.status-url');
+    const infoDiv = statusDiv.querySelector('.status-info');
+    const groupCountSpan = document.getElementById('groupCount');
+    
+    try {
+        const response = await fetch(`${API_BASE}/gptload/status`);
+        if (!response.ok) throw new Error('Failed to fetch status');
+        
+        const status = await response.json();
+        
+        if (status.connected) {
+            indicator.classList.add('connected');
+            indicator.classList.remove('disconnected');
+            urlDiv.textContent = status.url || 'Connected';
+            infoDiv.textContent = `${status.group_count || 0} groups | Last sync: ${formatDate(status.last_sync) || 'Never'}`;
+            groupCountSpan.textContent = status.group_count || 0;
+        } else {
+            indicator.classList.add('disconnected');
+            indicator.classList.remove('connected');
+            urlDiv.textContent = 'Disconnected';
+            infoDiv.textContent = status.error || 'Unable to connect';
+            groupCountSpan.textContent = '0';
+        }
+    } catch (error) {
+        indicator.classList.add('disconnected');
+        indicator.classList.remove('connected');
+        urlDiv.textContent = 'Error';
+        infoDiv.textContent = error.message;
+        groupCountSpan.textContent = '0';
+    }
+}
+
+async function toggleGptloadGroups() {
+    const groupsList = document.getElementById('gptloadGroupsList');
+    const btn = document.getElementById('showGroupsBtn');
+    
+    if (groupsList.classList.contains('hidden')) {
+        // Show groups
+        groupsList.classList.remove('hidden');
+        btn.innerHTML = '<span class="btn-icon">📋</span> Hide Groups';
+        await loadGptloadGroups();
+    } else {
+        // Hide groups
+        groupsList.classList.add('hidden');
+        const groupCount = document.getElementById('groupCount').textContent;
+        btn.innerHTML = `<span class="btn-icon">📋</span> Show Groups (${groupCount})`;
+    }
+}
+
+async function loadGptloadGroups() {
+    const groupsList = document.getElementById('gptloadGroupsList');
+    groupsList.innerHTML = '<div class="loading">Loading groups...</div>';
+    
+    try {
+        const response = await fetch(`${API_BASE}/gptload/groups`);
+        if (!response.ok) throw new Error('Failed to load groups');
+        
+        const groups = await response.json();
+        
+        if (groups.length === 0) {
+            groupsList.innerHTML = '<div class="text-muted">No groups found. Sync to GPT-Load to create groups.</div>';
+            return;
+        }
+        
+        let html = '';
+        groups.forEach(group => {
+            html += `
+                <div class="group-item">
+                    <div>
+                        <div class="group-name">${group.name}</div>
+                        ${group.provider_name ? `<div class="text-muted" style="font-size: 12px;">Provider: ${group.provider_name}</div>` : ''}
+                    </div>
+                    <span class="group-type ${group.group_type}">${group.group_type}</span>
+                </div>
+            `;
+        });
+        
+        groupsList.innerHTML = html;
+    } catch (error) {
+        groupsList.innerHTML = `<div class="text-danger">Error loading groups: ${error.message}</div>`;
+    }
+}
+
+async function syncToGptload() {
+    const btn = document.getElementById('syncGptloadBtn');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">⏳</span> Syncing...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/config/sync-gptload`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Sync failed');
+        }
+        
+        const result = await response.json();
+        
+        // Show success message
+        showNotification('GPT-Load sync successful!', 'success');
+        
+        // Reload status and groups
+        await loadGptloadStatus();
+        
+        // If groups are visible, reload them
+        const groupsList = document.getElementById('gptloadGroupsList');
+        if (!groupsList.classList.contains('hidden')) {
+            await loadGptloadGroups();
+        }
+        
+    } catch (error) {
+        showNotification(`Sync failed: ${error.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// uni-api Functions
+async function toggleYamlPreview() {
+    const content = document.getElementById('uniapiConfigContent');
+    const btn = document.getElementById('toggleYamlBtn');
+    
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        btn.innerHTML = '<span class="btn-icon">👁️</span> Hide YAML Preview';
+        await loadUniapiConfig();
+    } else {
+        content.classList.add('hidden');
+        btn.innerHTML = '<span class="btn-icon">👁️</span> Show YAML Preview';
+    }
+}
+
+async function generateUniapiConfig() {
+    const btn = document.getElementById('generateConfigBtn');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">⏳</span> Generating...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/config/sync-uniapi`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Generation failed');
+        }
+        
+        const result = await response.json();
+        
+        // Show success message
+        showNotification('uni-api configuration generated successfully!', 'success');
+        
+        // Update status
+        await updateUniapiStatus();
+        
+        // If preview is visible, reload it
+        const content = document.getElementById('uniapiConfigContent');
+        if (!content.classList.contains('hidden')) {
+            await loadUniapiConfig();
+        }
+        
+        // Enable download button
+        document.getElementById('downloadYamlBtn').disabled = false;
+        
+    } catch (error) {
+        showNotification(`Generation failed: ${error.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function updateUniapiStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/config/uni-api/yaml`);
+        if (!response.ok) return;
+        
+        const yaml = await response.text();
+        const lines = yaml.split('\n');
+        const providerLines = lines.filter(line => line.trim().startsWith('- provider:'));
+        
+        document.getElementById('uniapiProviderCount').textContent = providerLines.length;
+        
+        const statusBadge = document.getElementById('uniapiConfigStatus');
+        statusBadge.textContent = '✓ Ready';
+        statusBadge.classList.add('ready');
+        
+    } catch (error) {
+        console.error('Failed to update uni-api status:', error);
+    }
+}
+
+// Notification Helper
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'};
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Add CSS animations for notifications
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Update the polling function
+function startGPTLoadStatusPolling() {
+    // Initial load
+    loadGptloadStatus();
+    
+    // Poll every 30 seconds
+    gptloadStatusInterval = setInterval(loadGptloadStatus, 30000);
+}

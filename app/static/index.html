@@ -9,18 +9,9 @@
 <body>
     <div class="container">
         <header>
-            <h1>LLM Provider Manager</h1>
-            <div class="header-status">
-                <div id="gptloadStatus" class="gptload-status">
-                    <span class="status-indicator"></span>
-                    <div class="status-details">
-                        <div class="status-url">Checking GPT-Load...</div>
-                        <div class="status-info"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="header-actions">
-                <button id="syncBtn" class="btn btn-primary" title="Sends normalized models to GPT-Load and generates uni-api configuration">Sync Configuration</button>
+            <div class="header-content">
+                <h1>LLM Provider Manager</h1>
+                <p class="header-subtitle">Unified LLM API Configuration & Load Balancing</p>
             </div>
         </header>
 
@@ -37,6 +28,80 @@
                 <div id="providersList" class="providers-list">
                     <div class="loading">Loading providers...</div>
                 </div>
+
+                <!-- GPT-Load Configuration Section -->
+                <div class="gptload-config-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>GPT-Load Configuration</h2>
+                            <p class="section-subtitle">Load balancing & group management</p>
+                        </div>
+                    </div>
+                    <div class="gptload-status-card">
+                        <div id="gptloadConnectionStatus" class="connection-status">
+                            <span class="status-indicator"></span>
+                            <div class="status-details">
+                                <div class="status-label">Connection</div>
+                                <div class="status-url">Checking...</div>
+                            </div>
+                            <div class="status-meta">
+                                <div class="status-info"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-actions">
+                        <button id="showGroupsBtn" class="btn btn-secondary">
+                            <span class="btn-icon">📋</span>
+                            Show Groups (<span id="groupCount">0</span>)
+                        </button>
+                        <button id="syncGptloadBtn" class="btn btn-primary">
+                            <span class="btn-icon">🔄</span>
+                            Sync to GPT-Load
+                        </button>
+                    </div>
+                    <div id="gptloadGroupsList" class="gptload-groups-list hidden">
+                        <div class="loading">Loading groups...</div>
+                    </div>
+                </div>
+
+                <!-- uni-api Configuration Section -->
+                <div class="uniapi-config-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>uni-api Configuration</h2>
+                            <p class="section-subtitle">Unified API gateway configuration</p>
+                        </div>
+                    </div>
+                    <div class="uniapi-status-card">
+                        <div class="config-status">
+                            <div class="status-item">
+                                <span class="status-label">Providers</span>
+                                <span id="uniapiProviderCount" class="status-value">-</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Status</span>
+                                <span id="uniapiConfigStatus" class="status-badge">Not Generated</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-actions">
+                        <button id="toggleYamlBtn" class="btn btn-secondary">
+                            <span class="btn-icon">👁️</span>
+                            Show YAML Preview
+                        </button>
+                        <button id="generateConfigBtn" class="btn btn-primary">
+                            <span class="btn-icon">⚙️</span>
+                            Generate Config
+                        </button>
+                        <button id="downloadYamlBtn" class="btn btn-success" disabled>
+                            <span class="btn-icon">⬇️</span>
+                            Download
+                        </button>
+                    </div>
+                    <div id="uniapiConfigContent" class="uniapi-config-content hidden">
+                        <div class="loading">Loading configuration...</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Provider Detail View -->
@@ -49,15 +114,34 @@
 
                 <div id="providerInfo" class="provider-info"></div>
 
-                <div class="models-section">
-                    <div class="models-header">
-                        <h3>Models</h3>
-                        <button id="saveChangesBtn" class="btn btn-success save-changes-btn hidden">
-                            Save Changes (<span id="changeCount">0</span>)
-                        </button>
+                <div class="provider-detail-content">
+                    <!-- Normalized Names Sidebar -->
+                    <div id="normalizedNamesSidebar" class="normalized-names-sidebar">
+                        <div class="sidebar-header">
+                            <h4>Normalized Names</h4>
+                            <input type="text" 
+                                   id="sidebarSearch" 
+                                   class="sidebar-search" 
+                                   placeholder="Search names...">
+                        </div>
+                        <div id="normalizedNamesList" class="normalized-names-list">
+                            <div class="loading">Loading...</div>
+                        </div>
                     </div>
-                    <div id="modelsList" class="models-list">
-                        <div class="loading">Loading models...</div>
+
+                    <!-- Models Section -->
+                    <div class="models-section">
+                        <div class="models-header">
+                            <h3>Models</h3>
+                        </div>
+                        <div id="modelsList" class="models-list">
+                            <div class="loading">Loading models...</div>
+                        </div>
+                        <div class="models-footer">
+                            <button id="saveChangesBtn" class="btn btn-success save-changes-btn hidden">
+                                Save Changes (<span id="changeCount">0</span>)
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

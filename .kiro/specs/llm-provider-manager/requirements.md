@@ -90,11 +90,12 @@ The LLM Provider Manager is a service that unifies multiple LLM API providers (O
 
 1. WHEN a user requests uni-api configuration generation THEN the System SHALL create a valid api.yaml file following uni-api specifications
 2. WHEN generating provider entries THEN the System SHALL create one entry for each GPT-Load aggregate group pointing to its proxy endpoint
-3. WHEN generating provider entries THEN the System SHALL create one entry for each GPT-Load standard group that contains non-duplicate models pointing to its proxy endpoint
-4. WHEN generating provider entries THEN the System SHALL configure each entry with GPT-Load's base URL, authentication key, and the appropriate group proxy path
-5. WHEN generating provider entries THEN the System SHALL leave the model list empty to allow uni-api to automatically fetch available models from GPT-Load
-6. WHEN the api.yaml file is generated THEN the System SHALL make it available for download or direct deployment
-7. WHEN configuration generation fails THEN the System SHALL display validation errors and prevent invalid configuration export
+3. WHEN generating provider entries THEN the System SHALL create one entry for each GPT-Load standard group whose name ends with "-no-aggregate-models" pointing to its proxy endpoint
+4. WHEN generating provider entries THEN the System SHALL NOT include standard groups that are sub-groups of aggregate groups to prevent bypassing load balancing
+5. WHEN generating provider entries THEN the System SHALL configure each entry with GPT-Load's base URL, authentication key, and the appropriate group proxy path
+6. WHEN generating provider entries THEN the System SHALL leave the model list empty to allow uni-api to automatically fetch available models from GPT-Load
+7. WHEN the api.yaml file is generated THEN the System SHALL make it available for download or direct deployment
+8. WHEN configuration generation fails THEN the System SHALL display validation errors and prevent invalid configuration export
 
 ### Requirement 7
 
@@ -216,3 +217,92 @@ The LLM Provider Manager is a service that unifies multiple LLM API providers (O
 3. WHEN a user clicks "Save Changes" THEN the System SHALL display a confirmation dialog summarizing the changes to be applied
 4. WHEN the save confirmation is displayed THEN the System SHALL show the count of models to be renamed and the count of models to be deleted
 5. WHEN all changes are saved successfully THEN the System SHALL display a message indicating the next step is to click "Sync Configuration" to generate GPT-Load and uni-api configs
+
+### Requirement 17
+
+**User Story:** As a user, I want the system to intelligently update GPT-Load configuration when I modify providers or models, so that only necessary changes are applied without recreating everything from scratch.
+
+#### Acceptance Criteria
+
+1. WHEN a user adds models to an existing provider THEN the System SHALL update the provider's standard group by adding the new models to model_redirect_rules without recreating the group
+2. WHEN a user removes models from an existing provider THEN the System SHALL update the provider's standard group by removing the models from model_redirect_rules and remove the provider from any affected aggregate groups
+3. WHEN a user changes a model's normalized name THEN the System SHALL update the affected standard group's model_redirect_rules and adjust aggregate group membership accordingly
+4. WHEN a model normalization change causes a provider to leave an aggregate group AND the aggregate has only one remaining sub-group THEN the System SHALL delete the aggregate group and retain the single standard group
+5. WHEN a user adds a new provider with models that match existing normalized names THEN the System SHALL create a new standard group for the provider and add it as a sub-group to existing aggregate groups or create new aggregates
+6. WHEN a user deletes all models with a specific normalized name from a provider THEN the System SHALL remove that provider from the corresponding aggregate group and delete the aggregate if it becomes empty
+7. WHEN configuration sync executes THEN the System SHALL fetch the current GPT-Load configuration, compare it with the desired state, and apply only the minimal set of changes required
+8. WHEN sync applies changes THEN the System SHALL execute operations in the correct sequence: delete obsolete aggregates, update standard groups, create new standard groups, delete obsolete standard groups, create new aggregate groups
+9. WHEN a standard group's model_redirect_rules are updated THEN the System SHALL use the PUT /api/groups/{id} endpoint to modify the existing group without recreating it
+10. WHEN an aggregate group's sub-group membership changes THEN the System SHALL delete and recreate the aggregate group due to GPT-Load API limitations
+11. WHEN sync operations fail partially THEN the System SHALL log detailed error information, continue with remaining operations where possible, and report which changes succeeded and which failed
+12. WHEN viewing sync history THEN the System SHALL display a detailed summary of changes including groups created, updated, and deleted
+
+### Requirement 18
+
+**User Story:** As a user, I want the "Save Changes" button to be easily accessible when I have a long list of models, so that I don't have to scroll back to the top to save my changes.
+
+#### Acceptance Criteria
+
+1. WHEN the model list exceeds one screen height THEN the System SHALL display the "Save Changes" button at the bottom of the model list for easy access
+2. WHEN pending changes exist THEN the System SHALL display the "Save Changes" button at the bottom of the model list
+3. WHEN a user clicks the "Save Changes" button THEN the System SHALL execute the save operation
+
+### Requirement 19
+
+**User Story:** As a user, I want to view and download the generated uni-api configuration, so that I can verify the configuration and deploy it to my uni-api instance.
+
+#### Acceptance Criteria
+
+1. WHEN a user accesses the dashboard THEN the System SHALL display a section showing the uni-api configuration status
+2. WHEN GPT-Load groups exist THEN the System SHALL display a preview of the generated uni-api YAML configuration
+3. WHEN a user clicks a download button THEN the System SHALL download the uni-api YAML file as api.yaml
+4. WHEN no GPT-Load groups exist THEN the System SHALL display a message indicating that sync must be run first
+5. WHEN the uni-api YAML is displayed THEN the System SHALL show it in a readable format with syntax highlighting or monospace font
+
+### Requirement 20
+
+**User Story:** As a user, I want to see a list of all existing normalized model names when editing models, so that I can maintain consistency and avoid creating duplicate normalized names with slight variations.
+
+#### Acceptance Criteria
+
+1. WHEN a user views the provider detail page THEN the System SHALL display a sidebar or panel showing all existing normalized model names across all providers
+2. WHEN a user edits a model name THEN the System SHALL highlight matching normalized names in the reference list to help identify existing standards
+3. WHEN a user types in the model name input field THEN the System SHALL provide autocomplete suggestions from the existing normalized model names
+4. WHEN the normalized model list is displayed THEN the System SHALL show each unique normalized name with a count of how many providers use it
+5. WHEN a user clicks on a normalized name in the reference list THEN the System SHALL filter or highlight models in the current provider that could be normalized to that name
+
+### Requirement 21
+
+**User Story:** As a user, I want the uni-api configuration file to be automatically written to disk during sync operations, so that the uni-api container can access the configuration without manual intervention.
+
+#### Acceptance Criteria
+
+1. WHEN a sync operation completes THEN the System SHALL automatically write the generated uni-api YAML to the configured file path
+2. WHEN no export path is specified THEN the System SHALL use the default path /app/uni-api-config/api.yaml
+3. WHEN the uni-api configuration directory does not exist THEN the System SHALL create it before writing the file
+4. WHEN writing the configuration file THEN the System SHALL ensure proper file permissions for the uni-api container to read
+5. WHEN the file write operation fails THEN the System SHALL log the error and include it in the sync result
+
+### Requirement 22
+
+**User Story:** As a user, I want the uni-api configuration to be appended to an existing minimal configuration file, so that the uni-api container can start successfully with required base configuration.
+
+#### Acceptance Criteria
+
+1. WHEN generating uni-api configuration THEN the System SHALL read the existing api.yaml file if it exists
+2. WHEN an existing api.yaml contains a dummy provider named "provider_name" THEN the System SHALL remove it before adding generated providers
+3. WHEN appending provider configurations THEN the System SHALL preserve existing api_keys and preferences sections from the original file
+4. WHEN the existing file does not exist THEN the System SHALL create a new file with generated providers and default api_keys and preferences sections
+5. WHEN the existing file is malformed THEN the System SHALL log a warning and create a new file with generated configuration
+
+### Requirement 23
+
+**User Story:** As a user, I want the uni-api provider entries to use the correct base_url format according to uni-api specifications, so that the uni-api gateway can properly route requests to GPT-Load.
+
+#### Acceptance Criteria
+
+1. WHEN generating provider entries for OpenAI-compatible providers THEN the System SHALL use base_url format: http://gptload:3001/proxy/{group_name}/v1/chat/completions
+2. WHEN generating provider entries for Anthropic-compatible providers THEN the System SHALL use base_url format: http://gptload:3001/proxy/{group_name}/v1/messages
+3. WHEN generating provider entries for Gemini-compatible providers THEN the System SHALL use base_url format: http://gptload:3001/proxy/{group_name}/v1beta
+4. WHEN the provider channel type is unknown THEN the System SHALL default to OpenAI format with /v1/chat/completions path
+5. WHEN generating provider entries THEN the System SHALL use the GPT-Load URL from environment configuration or settings

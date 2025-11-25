@@ -17,6 +17,8 @@ class GPTLoadGroup(Base):
     provider_id = Column(Integer, ForeignKey("providers.id", ondelete="CASCADE"), nullable=True, index=True)
     normalized_model = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_sync_timestamp = Column(DateTime, nullable=True)
+    config_hash = Column(String, nullable=True)
 
     # Constraints
     __table_args__ = (
