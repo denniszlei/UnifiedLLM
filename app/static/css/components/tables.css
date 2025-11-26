@@ -1,0 +1,148 @@
+/* Table Component Styles
+ * Modern table styling with alternating rows and hover effects
+ * Requirements: 8.1, 8.2, 8.3
+ */
+
+/* Base Table */
+.models-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+/* Table Headers */
+.models-table th {
+    background-color: var(--color-gray-50);
+    padding: var(--space-3) var(--space-4);
+    font-weight: 600;
+    text-align: left;
+    color: var(--color-gray-700);
+    border-bottom: 2px solid var(--color-gray-200);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+}
+
+/* Table Cells */
+.models-table td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+    color: var(--color-gray-700);
+}
+
+/* Alternating Row Colors */
+.models-table tbody tr:nth-child(even) {
+    background-color: var(--color-gray-50);
+}
+
+/* Row Hover Effect */
+.models-table tbody tr:hover {
+    background-color: var(--color-info-light);
+}
+
+/* Suggested for Normalization Row */
+.models-table tr.suggested-for-normalization {
+    background-color: var(--color-info-light);
+    border-left: 4px solid var(--color-primary);
+}
+
+.models-table tr.suggested-for-normalization:hover {
+    background-color: #c3ddf7;
+}
+
+/* Marked for Deletion Row */
+.models-table tr.marked-for-deletion {
+    background-color: var(--color-gray-50);
+    opacity: 0.6;
+}
+
+.models-table tr.marked-for-deletion td {
+    text-decoration: line-through;
+    color: var(--color-gray-400);
+}
+
+.models-table tr.marked-for-deletion .model-name-input {
+    text-decoration: line-through;
+    color: var(--color-gray-400);
+    background-color: var(--color-gray-50);
+    border-color: var(--color-gray-200);
+    pointer-events: none;
+}
+
+.models-table tr.marked-for-deletion .duplicate-warning {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+/* Models List Container */
+.models-list {
+    flex: 1;
+    margin-bottom: 0;
+    overflow-x: auto;
+}
+
+/* Models Section */
+.models-section {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    flex: 1;
+    min-width: 0;
+}
+
+.models-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+.models-section h3 {
+    font-size: var(--text-lg);
+    color: var(--color-gray-800);
+    margin: 0;
+}
+
+/* Models Footer */
+.models-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--space-6);
+    margin-top: var(--space-6);
+    border-top: 2px solid var(--color-gray-200);
+    background-color: white;
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-sticky);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.models-footer .save-changes-btn {
+    margin: 0;
+    padding: var(--space-3) var(--space-8);
+    font-size: var(--text-base);
+    font-weight: 600;
+}
+
+/* Table Scrollbar Styling */
+.models-list::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.models-list::-webkit-scrollbar-track {
+    background: var(--color-gray-100);
+    border-radius: var(--radius-sm);
+}
+
+.models-list::-webkit-scrollbar-thumb {
+    background: var(--color-gray-400);
+    border-radius: var(--radius-sm);
+}
+
+.models-list::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gray-500);
+}

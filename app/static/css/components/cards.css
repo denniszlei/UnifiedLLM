@@ -1,0 +1,190 @@
+/* Card Component Styles
+ * Modern card styling with depth and hover effects
+ * Requirements: 4.1, 4.2, 4.4
+ */
+
+/* Base Card */
+.card {
+    background: white;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    transition: all var(--transition-normal);
+}
+
+.card:hover {
+    border-color: var(--color-gray-300);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+/* Provider Card */
+.provider-card {
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    background: white;
+}
+
+.provider-card:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-gray-300);
+    transform: translateY(-2px);
+}
+
+.provider-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-3);
+}
+
+.provider-card-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-gray-800);
+}
+
+.provider-card-actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.provider-card-info {
+    color: var(--color-gray-500);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-1);
+}
+
+.provider-card-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-gray-400);
+}
+
+/* Provider Info Card */
+.provider-info {
+    background-color: var(--color-gray-50);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-5);
+}
+
+.provider-info-row {
+    display: flex;
+    margin-bottom: var(--space-3);
+}
+
+.provider-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.provider-info-label {
+    font-weight: 600;
+    width: 150px;
+    color: var(--color-gray-700);
+    font-size: var(--text-sm);
+}
+
+.provider-info-value {
+    color: var(--color-gray-500);
+    font-size: var(--text-sm);
+}
+
+/* Status Cards */
+.gptload-status-card,
+.uniapi-status-card {
+    background: white;
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--space-4);
+    transition: box-shadow var(--transition-normal);
+}
+
+.gptload-status-card:hover,
+.uniapi-status-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* Save Summary Card */
+.save-summary {
+    background-color: var(--color-gray-50);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    border-left: 4px solid var(--color-primary);
+}
+
+.save-summary-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    color: var(--color-gray-700);
+    font-size: var(--text-sm);
+}
+
+.save-summary-item:not(:last-child) {
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.save-summary-icon {
+    font-size: var(--text-lg);
+}
+
+.save-summary-text {
+    flex: 1;
+}
+
+/* Warning Card */
+.save-warning {
+    background-color: var(--color-warning-light);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    color: #856404;
+    font-size: var(--text-sm);
+    margin-bottom: 0 !important;
+}
+
+/* Next Steps Card */
+.next-steps {
+    background-color: var(--color-info-light);
+    border: 1px solid var(--color-info);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.next-steps h4 {
+    font-size: var(--text-base);
+    color: var(--color-gray-800);
+    margin-bottom: var(--space-3);
+}
+
+.next-steps ol {
+    margin-left: var(--space-5);
+    color: var(--color-gray-700);
+}
+
+.next-steps li {
+    margin-bottom: var(--space-2);
+    line-height: var(--leading-relaxed);
+}
+
+/* Info Note Card */
+.info-note {
+    background-color: var(--color-gray-50);
+    border-left: 4px solid var(--color-primary);
+    padding: var(--space-3);
+    color: var(--color-gray-700);
+    font-size: var(--text-sm);
+    margin-bottom: 0 !important;
+}
+
+

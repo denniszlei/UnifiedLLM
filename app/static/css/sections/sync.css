@@ -1,0 +1,175 @@
+/* UnifiedLLM UI - Sync Progress Section Styles
+ * Sync progress view with progress bar and steps.
+ * Requirements: 10.2
+ */
+
+/* ========================================
+ * SYNC PROGRESS CONTAINER
+ * ======================================== */
+
+.sync-progress-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-5);
+}
+
+.sync-progress-container h2 {
+  text-align: center;
+  margin-bottom: var(--space-8);
+  color: var(--color-gray-800);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+}
+
+/* ========================================
+ * PROGRESS BAR
+ * ======================================== */
+
+.progress-bar {
+  width: 100%;
+  height: 30px;
+  background-color: var(--color-gray-100);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-8);
+  box-shadow: var(--shadow-inner);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  transition: width var(--transition-slow);
+  width: 0%;
+  border-radius: var(--radius-full);
+  position: relative;
+}
+
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ========================================
+ * SYNC STEPS
+ * ======================================== */
+
+.sync-steps {
+  margin-bottom: var(--space-5);
+}
+
+.sync-step {
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  transition: all var(--transition-normal);
+}
+
+.sync-step:last-child {
+  margin-bottom: 0;
+}
+
+/* ========================================
+ * SYNC STEP STATES
+ * ======================================== */
+
+.sync-step.completed {
+  background-color: var(--color-success-light);
+  color: #155724;
+}
+
+.sync-step.in-progress {
+  background-color: var(--color-info-light);
+  color: #0c5460;
+  animation: pulse-bg 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-bg {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.sync-step.pending {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-gray-500);
+}
+
+.sync-step.error {
+  background-color: var(--color-danger-light);
+  color: #721c24;
+}
+
+/* ========================================
+ * SYNC STEP ICON
+ * ======================================== */
+
+.sync-step-icon {
+  font-size: var(--text-xl);
+  flex-shrink: 0;
+}
+
+.sync-step.in-progress .sync-step-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+ * SYNC MESSAGE
+ * ======================================== */
+
+.sync-message {
+  text-align: center;
+  padding: var(--space-5);
+  font-size: var(--text-base);
+  border-radius: var(--radius-md);
+}
+
+.sync-message.success {
+  color: var(--color-success);
+  background-color: var(--color-success-light);
+}
+
+.sync-message.error {
+  color: var(--color-danger);
+  background-color: var(--color-danger-light);
+}
+
+.sync-message.info {
+  color: var(--color-info);
+  background-color: var(--color-info-light);
+}

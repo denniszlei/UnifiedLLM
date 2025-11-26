@@ -1,0 +1,165 @@
+/* UnifiedLLM UI - Sidebar Styles
+ * Normalized names sidebar with search and item styling.
+ * Requirements: 11.1, 11.2, 11.3, 11.4
+ */
+
+/* ========================================
+ * NORMALIZED NAMES SIDEBAR
+ * ======================================== */
+
+.normalized-names-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: sticky;
+  top: var(--space-5);
+  max-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow var(--transition-normal);
+}
+
+.normalized-names-sidebar:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ========================================
+ * SIDEBAR HEADER
+ * ======================================== */
+
+.sidebar-header {
+  padding: var(--space-4);
+  background-color: var(--color-gray-100);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.sidebar-header h4 {
+  font-size: var(--text-base);
+  color: var(--color-gray-800);
+  margin-bottom: var(--space-3);
+  font-weight: var(--font-semibold);
+}
+
+/* ========================================
+ * SIDEBAR SEARCH INPUT
+ * ======================================== */
+
+.sidebar-search {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+  background-color: var(--color-bg-primary);
+}
+
+.sidebar-search:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+.sidebar-search::placeholder {
+  color: var(--color-gray-400);
+}
+
+/* ========================================
+ * NORMALIZED NAMES LIST
+ * ======================================== */
+
+.normalized-names-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+.normalized-names-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.normalized-names-list::-webkit-scrollbar-track {
+  background: var(--color-gray-100);
+}
+
+.normalized-names-list::-webkit-scrollbar-thumb {
+  background: var(--color-gray-400);
+  border-radius: 3px;
+}
+
+.normalized-names-list::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}
+
+/* ========================================
+ * NORMALIZED NAME ITEM
+ * ======================================== */
+
+.normalized-name-item {
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.normalized-name-item:hover {
+  background-color: var(--color-info-light);
+  border-color: var(--color-info);
+  transform: translateX(2px);
+}
+
+.normalized-name-item:last-child {
+  margin-bottom: 0;
+}
+
+/* ========================================
+ * HIGHLIGHTED STATE
+ * ======================================== */
+
+.normalized-name-item.highlighted {
+  background-color: var(--color-warning-light);
+  border-color: var(--color-warning);
+  border-width: 2px;
+}
+
+/* ========================================
+ * SELECTED STATE
+ * ======================================== */
+
+.normalized-name-item.selected {
+  background-color: var(--color-info-light);
+  border-color: var(--color-info);
+  border-width: 2px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+ * ITEM TEXT CONTENT
+ * ======================================== */
+
+.normalized-name-text {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-800);
+  margin-bottom: var(--space-1);
+  word-break: break-word;
+}
+
+.normalized-name-meta {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+  display: flex;
+  gap: var(--space-2);
+}
+
+.normalized-name-meta span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}

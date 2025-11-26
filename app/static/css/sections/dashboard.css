@@ -1,0 +1,128 @@
+/* UnifiedLLM UI - Dashboard Section Styles
+ * Dashboard header, provider list, and provider cards.
+ * Requirements: 4.3
+ */
+
+/* ========================================
+ * DASHBOARD HEADER
+ * ======================================== */
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-5);
+}
+
+.dashboard-header h2 {
+  font-size: var(--text-xl);
+  color: var(--color-gray-800);
+  font-weight: var(--font-semibold);
+}
+
+/* ========================================
+ * PROVIDERS LIST
+ * ======================================== */
+
+.providers-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* ========================================
+ * PROVIDER CARD
+ * ======================================== */
+
+.provider-card {
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  background: var(--color-bg-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.provider-card:hover {
+  border-color: var(--color-gray-300);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.provider-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+}
+
+.provider-card-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-800);
+}
+
+.provider-card-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.provider-card-actions button {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.provider-card-info {
+  color: var(--color-gray-500);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-1);
+}
+
+.provider-card-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-gray-400);
+}
+
+/* ========================================
+ * PROVIDER INFO SECTION
+ * ======================================== */
+
+.provider-info {
+  background-color: var(--color-bg-secondary);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-5);
+}
+
+.provider-info-row {
+  display: flex;
+  margin-bottom: var(--space-3);
+}
+
+.provider-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.provider-info-label {
+  font-weight: var(--font-semibold);
+  width: 150px;
+  color: var(--color-gray-800);
+  font-size: var(--text-sm);
+}
+
+.provider-info-value {
+  color: var(--color-gray-500);
+  font-size: var(--text-sm);
+}
+
+/* ========================================
+ * PROVIDER DETAIL CONTENT LAYOUT
+ * ======================================== */
+
+.provider-detail-content {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}

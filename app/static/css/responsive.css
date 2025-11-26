@@ -1,0 +1,210 @@
+/* UnifiedLLM UI - Responsive Styles
+ * Media queries for mobile and tablet breakpoints.
+ * Requirements: 3.4, 12.1, 12.2, 12.3, 12.4
+ */
+
+/* ========================================
+ * BREAKPOINT: MOBILE (max-width: 768px)
+ * Requirements: 12.1, 12.2, 12.3, 12.4
+ * ======================================== */
+
+@media (max-width: 768px) {
+  /* Container - Stack vertically (Req: 12.1) */
+  .container {
+    padding: var(--space-3);
+  }
+
+  /* Header - Responsive adjustments (Req: 3.4) */
+  header {
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+  }
+
+  header h1 {
+    font-size: var(--text-2xl);
+  }
+
+  .header-subtitle {
+    font-size: var(--text-xs);
+  }
+
+  /* Hide header status on mobile (Req: 12.3) */
+  .header-status {
+    display: none;
+  }
+
+  /* Main content */
+  main {
+    padding: var(--space-4);
+    min-height: auto;
+    border-radius: var(--radius-md);
+  }
+
+  /* Typography - Adjust font sizes (Req: 12.2) */
+  .section-title h2,
+  .dashboard-header h2,
+  .detail-header h2 {
+    font-size: var(--text-lg);
+  }
+
+  .section-subtitle {
+    font-size: var(--text-xs);
+  }
+
+  /* Layout - Stack elements vertically (Req: 12.1) */
+  .dashboard-header,
+  .detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .detail-header h2 {
+    margin: 0;
+    order: -1;
+  }
+
+  .section-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .section-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Provider detail - Stack layout (Req: 12.1) */
+  .provider-detail-content {
+    flex-direction: column;
+  }
+
+  /* Sidebar - Hide on mobile (Req: 12.3) */
+  .normalized-names-sidebar {
+    display: none;
+  }
+
+  /* Provider cards */
+  .provider-card {
+    padding: var(--space-4);
+  }
+
+  .provider-card-header {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .provider-card-meta {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  /* Provider info */
+  .provider-info-row {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .provider-info-label {
+    width: auto;
+  }
+
+  /* Forms */
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .form-group input,
+  .form-group select {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  /* Tables */
+  .models-table th,
+  .models-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .model-actions {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  /* Modals */
+  .modal-content {
+    width: 95%;
+    max-width: none;
+    margin: var(--space-3);
+  }
+
+  /* GPT-Load section */
+  .gptload-config-section {
+    padding: var(--space-4);
+    margin: var(--space-5) 0;
+  }
+
+  .connection-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  /* uni-api section */
+  .uniapi-config-section {
+    padding: var(--space-4);
+    margin: var(--space-5) 0;
+  }
+
+  .config-status {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .yaml-preview {
+    font-size: var(--text-xs);
+    padding: var(--space-3);
+  }
+
+  /* Models footer */
+  .models-footer {
+    padding: var(--space-4);
+    margin-top: var(--space-4);
+  }
+
+  .models-footer .save-changes-btn {
+    width: 100%;
+  }
+
+  /* Mobile utility classes */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* ========================================
+ * PRINT STYLES
+ * ======================================== */
+
+@media print {
+  header,
+  .section-actions,
+  .provider-card-actions,
+  .model-actions,
+  .models-footer,
+  .normalized-names-sidebar,
+  .btn {
+    display: none !important;
+  }
+
+  main,
+  .provider-card,
+  .card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}

@@ -1,0 +1,197 @@
+/* Alert Component Styles
+ * Sync status messages, notifications, and form messages
+ * Requirements: 10.3
+ */
+
+/* Base Sync Status */
+.sync-status {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-5);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    animation: alertSlideIn var(--transition-normal);
+}
+
+@keyframes alertSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success Alert */
+.sync-status.success {
+    background-color: var(--color-success-light);
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+/* Error Alert */
+.sync-status.error {
+    background-color: var(--color-danger-light);
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Info Alert */
+.sync-status.info {
+    background-color: var(--color-info-light);
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+/* Warning Alert */
+.sync-status.warning {
+    background-color: var(--color-warning-light);
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Sync Message */
+.sync-message {
+    text-align: center;
+    padding: var(--space-5);
+    font-size: var(--text-base);
+    animation: alertFadeIn var(--transition-normal);
+}
+
+@keyframes alertFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.sync-message.success {
+    color: var(--color-success);
+}
+
+.sync-message.error {
+    color: var(--color-danger);
+}
+
+/* Loading State */
+.loading {
+    text-align: center;
+    padding: var(--space-10);
+    color: var(--color-gray-400);
+    font-size: var(--text-sm);
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-500);
+}
+
+.status-badge.ready {
+    background-color: var(--color-success-light);
+    color: #155724;
+}
+
+.status-badge.pending {
+    background-color: var(--color-warning-light);
+    color: #856404;
+}
+
+.status-badge.error {
+    background-color: var(--color-danger-light);
+    color: #721c24;
+}
+
+/* Group Type Badges */
+.group-type {
+    display: inline-block;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.group-type.standard {
+    background-color: var(--color-info-light);
+    color: #1976d2;
+}
+
+.group-type.aggregate {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+/* Notification Toast (for future use) */
+.notification {
+    position: fixed;
+    top: var(--space-5);
+    right: var(--space-5);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-tooltip);
+    animation: notificationSlideIn var(--transition-normal);
+}
+
+@keyframes notificationSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.notification.success {
+    background-color: var(--color-success);
+    color: white;
+}
+
+.notification.error {
+    background-color: var(--color-danger);
+    color: white;
+}
+
+.notification.info {
+    background-color: var(--color-info);
+    color: white;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-10) var(--space-5);
+    text-align: center;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: var(--space-4);
+    opacity: 0.5;
+}
+
+.empty-state-message {
+    color: var(--color-gray-500);
+    font-size: var(--text-base);
+    margin-bottom: var(--space-3);
+}
+
+.empty-state-hint {
+    color: var(--color-gray-400);
+    font-size: var(--text-sm);
+}
