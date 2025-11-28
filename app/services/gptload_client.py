@@ -1586,19 +1586,29 @@ class GPTLoadClient:
         # Build group name to ID mapping for new groups
         new_group_name_to_id = {g['name']: g['id'] for g in created_groups}
         
-        # Add new groups to existing aggregates if they have matching models
+        # Add new groups to existing aggregates ONLY if their model matches
+        from app.services.provider_splitter import ProviderSplitter
+        
         for group_info in created_groups:
             group_name = group_info['name']
             group_id = group_info['id']
             
-            # Check if this group should be added to any existing aggregates
-            # This is determined by checking if the group's normalized model
-            # matches any existing aggregate
-            for aggregate_name, aggregate_id in existing_aggregates.items():
-                # Extract model name from aggregate name (format: aggregate-{model})
-                if aggregate_name.startswith('aggregate-'):
+            # Find the group config to get its model_redirect_rules
+            group_config = next((g for g in new_standard_groups if g.get('name') == group_name), None)
+            if not group_config:
+                continue
+            
+            model_redirect_rules = group_config.get('model_redirect_rules', {})
+            
+            # For each normalized model this group serves, find the matching aggregate
+            for normalized_model in model_redirect_rules.keys():
+                sanitized_model = ProviderSplitter.sanitize_name(normalized_model)
+                expected_aggregate_name = f"aggregate-{sanitized_model}"
+                
+                # Only add to the aggregate if it exists AND matches this model
+                if expected_aggregate_name in existing_aggregates:
+                    aggregate_id = existing_aggregates[expected_aggregate_name]
                     try:
-                        # Add this standard group as a sub-group to the aggregate
                         await self.add_sub_groups_with_equal_weights(
                             aggregate_id,
                             [group_id],
@@ -1608,10 +1618,10 @@ class GPTLoadClient:
                         if aggregate_id not in updated_aggregates:
                             updated_aggregates.append(aggregate_id)
                         
-                        logger.info(f"Added {group_name} to existing aggregate {aggregate_name}")
+                        logger.info(f"Added {group_name} to matching aggregate {expected_aggregate_name}")
                         
                     except Exception as e:
-                        error_msg = f"Add {group_name} to aggregate {aggregate_name}: {str(e)}"
+                        error_msg = f"Add {group_name} to aggregate {expected_aggregate_name}: {str(e)}"
                         errors.append(error_msg)
                         logger.error(f"Failed to add to aggregate: {error_msg}")
         

@@ -445,6 +445,50 @@ class ConfigurationGenerator:
                     if update_result['errors']:
                         result['errors'].extend(update_result['errors'])
                 
+                # Step 6.5: Update existing aggregate groups' sub-group membership
+                if diff.get('to_update_aggregate'):
+                    logger.info(f"Step 6.5: Updating {len(diff['to_update_aggregate'])} aggregate groups' sub-group membership")
+                    for agg_update in diff['to_update_aggregate']:
+                        agg_name = agg_update['name']
+                        agg_id = agg_update['group_id']
+                        changes = agg_update.get('changes', {})
+                        
+                        try:
+                            # Handle sub-group membership changes
+                            if 'sub_groups' in changes:
+                                removed_subs = changes['sub_groups'].get('removed', [])
+                                added_subs = changes['sub_groups'].get('added', [])
+                                
+                                # Remove sub-groups that should no longer be in this aggregate
+                                for sub_name in removed_subs:
+                                    sub_group = existing_config['group_by_name'].get(sub_name)
+                                    if sub_group:
+                                        sub_id = sub_group.get('id')
+                                        if sub_id:
+                                            try:
+                                                await gptload_client.delete_sub_group(agg_id, sub_id)
+                                                logger.info(f"Removed {sub_name} from aggregate {agg_name}")
+                                            except Exception as e:
+                                                logger.warning(f"Failed to remove {sub_name} from {agg_name}: {e}")
+                                
+                                # Add new sub-groups to this aggregate
+                                for sub_name in added_subs:
+                                    sub_group = existing_config['group_by_name'].get(sub_name)
+                                    if sub_group:
+                                        sub_id = sub_group.get('id')
+                                        if sub_id:
+                                            try:
+                                                await gptload_client.add_sub_groups_with_equal_weights(agg_id, [sub_id])
+                                                logger.info(f"Added {sub_name} to aggregate {agg_name}")
+                                            except Exception as e:
+                                                logger.warning(f"Failed to add {sub_name} to {agg_name}: {e}")
+                                
+                                logger.info(f"Updated aggregate {agg_name}: removed {len(removed_subs)}, added {len(added_subs)} sub-groups")
+                        except Exception as e:
+                            error_msg = f"Update aggregate {agg_name}: {str(e)}"
+                            result['errors'].append(error_msg)
+                            logger.error(error_msg)
+                
                 # Step 7: Create new standard groups
                 if diff['to_create_standard']:
                     logger.info(f"Step 7: Creating {len(diff['to_create_standard'])} new standard groups")
