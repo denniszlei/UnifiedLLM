@@ -84,7 +84,7 @@ def test_generate_uniapi_yaml_basic(config_generator, db_session):
         ),
         GPTLoadGroup(
             gptload_group_id=2,
-            name="test-standard",
+            name="test-provider-no-aggregate-models",
             group_type="standard",
             provider_id=1,
             normalized_model=None
@@ -104,11 +104,16 @@ def test_generate_uniapi_yaml_basic(config_generator, db_session):
     # Verify YAML contains expected content
     assert "providers:" in yaml_content
     assert "test-aggregate" in yaml_content
-    assert "test-standard" in yaml_content
+    # Standard groups must end with '-no-aggregate-models' to be included
+    assert "test-provider-no-aggregate-models" in yaml_content
     assert "http://localhost:3001/proxy/test-aggregate" in yaml_content
-    assert "http://localhost:3001/proxy/test-standard" in yaml_content
+    assert "http://localhost:3001/proxy/test-provider-no-aggregate-models" in yaml_content
     assert "api_keys:" in yaml_content
     assert "preferences:" in yaml_content
+    # Verify the gptload all-models API key is added
+    assert "sk-all-models-from-gptload" in yaml_content
+    assert "test-aggregate/*" in yaml_content
+    assert "test-provider-no-aggregate-models/*" in yaml_content
 
 
 def test_generate_uniapi_yaml_filters_duplicate_standards(config_generator, db_session):
@@ -134,9 +139,10 @@ def test_generate_uniapi_yaml_filters_duplicate_standards(config_generator, db_s
     db_session.add(standard_duplicate)
     
     # Create standard group with non-duplicate models (should be included)
+    # Must end with '-no-aggregate-models' to be included in uni-api config
     standard_unique = GPTLoadGroup(
         gptload_group_id=3,
-        name="provider-no-aggregate_models",
+        name="provider-no-aggregate-models",
         group_type="standard",
         provider_id=1,
         normalized_model=None
@@ -155,10 +161,10 @@ def test_generate_uniapi_yaml_filters_duplicate_standards(config_generator, db_s
     # Verify aggregate is included
     assert "gpt-4-aggregate" in yaml_content
     
-    # Verify non-duplicate standard is included
-    assert "provider-no-aggregate_models" in yaml_content
+    # Verify non-duplicate standard is included (must end with '-no-aggregate-models')
+    assert "provider-no-aggregate-models" in yaml_content
     
-    # Verify duplicate standard is NOT included
+    # Verify duplicate standard is NOT included (doesn't end with '-no-aggregate-models')
     assert "provider-0-gpt-4" not in yaml_content
 
 
@@ -520,23 +526,23 @@ def test_generate_uniapi_yaml_with_multiple_channel_types(config_generator, db_s
         db_session.add(provider)
     db_session.commit()
     
-    # Create groups for each provider
+    # Create groups for each provider (must end with '-no-aggregate-models' to be included)
     groups = [
         GPTLoadGroup(
             gptload_group_id=1,
-            name="openai-group",
+            name="openai-no-aggregate-models",
             group_type="standard",
             provider_id=providers[0].id
         ),
         GPTLoadGroup(
             gptload_group_id=2,
-            name="anthropic-group",
+            name="anthropic-no-aggregate-models",
             group_type="standard",
             provider_id=providers[1].id
         ),
         GPTLoadGroup(
             gptload_group_id=3,
-            name="gemini-group",
+            name="gemini-no-aggregate-models",
             group_type="standard",
             provider_id=providers[2].id
         )
@@ -553,9 +559,9 @@ def test_generate_uniapi_yaml_with_multiple_channel_types(config_generator, db_s
     )
     
     # Verify each channel type has correct path
-    assert "http://localhost:3001/proxy/openai-group/v1/chat/completions" in yaml_content
-    assert "http://localhost:3001/proxy/anthropic-group/v1/messages" in yaml_content
-    assert "http://localhost:3001/proxy/gemini-group/v1beta" in yaml_content
+    assert "http://localhost:3001/proxy/openai-no-aggregate-models/v1/chat/completions" in yaml_content
+    assert "http://localhost:3001/proxy/anthropic-no-aggregate-models/v1/messages" in yaml_content
+    assert "http://localhost:3001/proxy/gemini-no-aggregate-models/v1beta" in yaml_content
 
 
 def test_read_existing_yaml_file_exists(config_generator, tmp_path):
@@ -723,7 +729,7 @@ def test_extract_preferences_section_no_config(config_generator):
 def test_merge_configuration(config_generator):
     """Test merging configuration components."""
     providers = [
-        {"provider": "test-provider", "base_url": "http://test.com"}
+        {"provider": "test-provider", "base_url": "http://test.com", "api": "key", "model": []}
     ]
     api_keys = [
         {"api": "custom-key", "role": "admin"}
@@ -742,8 +748,77 @@ def test_merge_configuration(config_generator):
     assert "api_keys" in result
     assert "preferences" in result
     assert result["providers"] == providers
-    assert result["api_keys"] == api_keys
+    # Original api_keys should be preserved
+    assert any(k.get("api") == "custom-key" for k in result["api_keys"])
+    # New gptload key should be added
+    gptload_key = next((k for k in result["api_keys"] if k.get("api") == "sk-all-models-from-gptload"), None)
+    assert gptload_key is not None
+    assert "test-provider/*" in gptload_key["model"]
     assert result["preferences"] == preferences
+
+
+def test_build_gptload_all_models_api_key(config_generator):
+    """Test building the gptload all-models API key."""
+    providers = [
+        {"provider": "aggregate-deepseek-v3-2", "base_url": "http://test.com", "api": "key", "model": []},
+        {"provider": "hyb-0-no-aggregate-models", "base_url": "http://test2.com", "api": "key", "model": []},
+    ]
+    
+    result = config_generator._build_gptload_all_models_api_key(providers)
+    
+    assert result["api"] == "sk-all-models-from-gptload"
+    assert "aggregate-deepseek-v3-2/*" in result["model"]
+    assert "hyb-0-no-aggregate-models/*" in result["model"]
+    assert len(result["model"]) == 2
+
+
+def test_build_gptload_all_models_api_key_empty_providers(config_generator):
+    """Test building gptload API key with empty providers list."""
+    providers = []
+    
+    result = config_generator._build_gptload_all_models_api_key(providers)
+    
+    assert result["api"] == "sk-all-models-from-gptload"
+    assert result["model"] == []
+
+
+def test_update_api_keys_with_gptload_key_add_new(config_generator):
+    """Test adding gptload key when it doesn't exist."""
+    api_keys_section = [
+        {"api": "existing-key", "role": "admin"}
+    ]
+    gptload_key = {
+        "api": "sk-all-models-from-gptload",
+        "model": ["provider1/*", "provider2/*"]
+    }
+    
+    result = config_generator._update_api_keys_with_gptload_key(api_keys_section, gptload_key)
+    
+    assert len(result) == 2
+    assert any(k.get("api") == "existing-key" for k in result)
+    assert any(k.get("api") == "sk-all-models-from-gptload" for k in result)
+
+
+def test_update_api_keys_with_gptload_key_update_existing(config_generator):
+    """Test updating gptload key when it already exists."""
+    api_keys_section = [
+        {"api": "existing-key", "role": "admin"},
+        {"api": "sk-all-models-from-gptload", "model": ["old-provider/*"]}
+    ]
+    gptload_key = {
+        "api": "sk-all-models-from-gptload",
+        "model": ["new-provider1/*", "new-provider2/*"]
+    }
+    
+    result = config_generator._update_api_keys_with_gptload_key(api_keys_section, gptload_key)
+    
+    # Should still have 2 keys (not 3)
+    assert len(result) == 2
+    # The gptload key should be updated
+    gptload_entry = next(k for k in result if k.get("api") == "sk-all-models-from-gptload")
+    assert "new-provider1/*" in gptload_entry["model"]
+    assert "new-provider2/*" in gptload_entry["model"]
+    assert "old-provider/*" not in gptload_entry["model"]
 
 
 def test_generate_uniapi_yaml_with_existing_file(config_generator, db_session, tmp_path):
@@ -858,10 +933,10 @@ preferences:
 
 def test_generate_uniapi_yaml_no_existing_file(config_generator, db_session):
     """Test generating uni-api YAML when no existing file exists."""
-    # Create a test group
+    # Create a test group (must end with '-no-aggregate-models' to be included)
     group = GPTLoadGroup(
         gptload_group_id=1,
-        name="test-group",
+        name="test-no-aggregate-models",
         group_type="standard",
         provider_id=1
     )
@@ -879,7 +954,10 @@ def test_generate_uniapi_yaml_no_existing_file(config_generator, db_session):
     # Verify default sections are used
     assert "sk-user-key" in yaml_content
     assert "999999/min" in yaml_content
-    assert "test-group" in yaml_content
+    assert "test-no-aggregate-models" in yaml_content
+    # Verify the gptload all-models API key is added
+    assert "sk-all-models-from-gptload" in yaml_content
+    assert "test-no-aggregate-models/*" in yaml_content
 
 
 def test_export_uniapi_yaml_creates_directory(config_generator, db_session, tmp_path):

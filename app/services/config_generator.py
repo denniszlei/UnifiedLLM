@@ -1157,6 +1157,11 @@ class ConfigurationGenerator:
         
         Implements Subtask 26.4: Implement configuration merging logic.
         
+        This method also adds a special API key 'sk-all-models-from-gptload' that
+        includes all provider names from the generated providers. This allows
+        copying the generated api.yaml to other uni-api instances and using this
+        dedicated API key to access all models served by gpt-load.
+        
         Args:
             generated_providers: List of provider entries generated from GPT-Load groups.
             api_keys_section: Preserved or default api_keys section.
@@ -1165,19 +1170,103 @@ class ConfigurationGenerator:
         Returns:
             Complete merged configuration dictionary.
         """
+        # Build the special API key with all provider names
+        gptload_api_key = self._build_gptload_all_models_api_key(generated_providers)
+        
+        # Add or update the gptload API key in api_keys_section
+        updated_api_keys = self._update_api_keys_with_gptload_key(
+            api_keys_section, 
+            gptload_api_key
+        )
+        
         config = {
             "providers": generated_providers,
-            "api_keys": api_keys_section,
+            "api_keys": updated_api_keys,
             "preferences": preferences_section
         }
         
         logger.info(
             f"Merged configuration: {len(generated_providers)} providers, "
-            f"{len(api_keys_section)} api_keys, "
+            f"{len(updated_api_keys)} api_keys, "
             f"{len(preferences_section)} preferences"
         )
         
         return config
+
+    def _build_gptload_all_models_api_key(
+        self,
+        providers: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Build the special API key that includes all gpt-load provider models.
+        
+        Creates an API key entry with 'sk-all-models-from-gptload' that lists
+        all provider names with '/*' suffix, allowing access to all models
+        from each provider.
+        
+        Args:
+            providers: List of provider entries from generated configuration.
+            
+        Returns:
+            API key entry dictionary with all provider models.
+        """
+        # Extract provider names and create model entries with /* suffix
+        model_entries = []
+        for provider in providers:
+            provider_name = provider.get("provider")
+            if provider_name:
+                # Format: provider_name/* to include all models from this provider
+                model_entries.append(f"{provider_name}/*")
+        
+        api_key_entry = {
+            "api": "sk-all-models-from-gptload",
+            "model": model_entries
+        }
+        
+        logger.info(
+            f"Built gptload API key with {len(model_entries)} provider model entries"
+        )
+        
+        return api_key_entry
+
+    def _update_api_keys_with_gptload_key(
+        self,
+        api_keys_section: List[Dict[str, Any]],
+        gptload_api_key: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Update api_keys section with the gptload all-models API key.
+        
+        If an API key with 'sk-all-models-from-gptload' already exists, it will
+        be updated. Otherwise, the new key will be added to the section.
+        
+        Args:
+            api_keys_section: Existing api_keys section.
+            gptload_api_key: The gptload API key entry to add/update.
+            
+        Returns:
+            Updated api_keys section with the gptload key.
+        """
+        # Make a copy to avoid modifying the original
+        updated_keys = list(api_keys_section)
+        
+        # Check if the gptload key already exists
+        gptload_key_name = "sk-all-models-from-gptload"
+        existing_index = None
+        
+        for i, key_entry in enumerate(updated_keys):
+            if isinstance(key_entry, dict) and key_entry.get("api") == gptload_key_name:
+                existing_index = i
+                break
+        
+        if existing_index is not None:
+            # Update existing entry
+            updated_keys[existing_index] = gptload_api_key
+            logger.info(f"Updated existing '{gptload_key_name}' API key")
+        else:
+            # Add new entry
+            updated_keys.append(gptload_api_key)
+            logger.info(f"Added new '{gptload_key_name}' API key")
+        
+        return updated_keys
 
     def _validate_uniapi_config(self, config: Dict[str, Any]) -> None:
         """Validate uni-api configuration structure.
