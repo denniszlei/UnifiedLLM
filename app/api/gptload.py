@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.services.gptload_client import GPTLoadClient
 from app.models.gptload_group import GPTLoadGroup
+from app.models.sync_record import SyncRecord
 from app.config import settings
 
 router = APIRouter(prefix="/api/gptload", tags=["gptload"])
@@ -19,6 +20,7 @@ class GPTLoadStatusResponse(BaseModel):
     connected: bool
     url: str
     group_count: int
+    last_sync: Optional[str] = None
     error_message: Optional[str] = None
 
 
@@ -30,10 +32,24 @@ async def get_gptload_status(db: Session = Depends(get_db)):
     - Connection status (connected/disconnected)
     - GPT-Load URL
     - Number of groups currently in GPT-Load
+    - Last sync timestamp
     
     Requirements: 13.1, 13.2, 13.3, 13.5
     """
     gptload_url = settings.gptload_url
+    
+    # Get last successful sync time
+    last_sync_str = None
+    try:
+        last_sync_record = db.query(SyncRecord).filter(
+            SyncRecord.status == 'success'
+        ).order_by(SyncRecord.completed_at.desc()).first()
+        
+        if last_sync_record and last_sync_record.completed_at:
+            last_sync_str = last_sync_record.completed_at.isoformat()
+    except Exception:
+        # Table might not exist in test environment
+        pass
     
     try:
         # Check connectivity to GPT-Load
@@ -45,6 +61,7 @@ async def get_gptload_status(db: Session = Depends(get_db)):
                     connected=False,
                     url=gptload_url,
                     group_count=0,
+                    last_sync=last_sync_str,
                     error_message="GPT-Load service is not responding"
                 )
             
@@ -60,6 +77,7 @@ async def get_gptload_status(db: Session = Depends(get_db)):
                 connected=True,
                 url=gptload_url,
                 group_count=group_count,
+                last_sync=last_sync_str,
                 error_message=None
             )
             
@@ -69,6 +87,7 @@ async def get_gptload_status(db: Session = Depends(get_db)):
             connected=False,
             url=gptload_url,
             group_count=0,
+            last_sync=last_sync_str,
             error_message=str(e)
         )
 

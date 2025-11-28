@@ -15,8 +15,10 @@ from app.services.gptload_client import GPTLoadClient
 def test_db():
     """Create a test database."""
     from sqlalchemy import event
+    # Import all models to ensure they are registered with Base
+    from app.models import Provider, Model, GPTLoadGroup, SyncRecord
     
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     
     # Enable foreign key constraints for SQLite
     @event.listens_for(engine, "connect")
@@ -76,6 +78,7 @@ async def test_gptload_status_connected(client):
         assert data["group_count"] == 3
         assert data["error_message"] is None
         assert "url" in data
+        assert "last_sync" in data
 
 
 @pytest.mark.asyncio
@@ -98,6 +101,7 @@ async def test_gptload_status_disconnected(client):
         assert data["group_count"] == 0
         assert data["error_message"] is not None
         assert "url" in data
+        assert "last_sync" in data
 
 
 @pytest.mark.asyncio
@@ -123,3 +127,4 @@ async def test_gptload_status_unhealthy(client):
         assert data["connected"] is False
         assert data["group_count"] == 0
         assert data["error_message"] == "GPT-Load service is not responding"
+        assert "last_sync" in data
