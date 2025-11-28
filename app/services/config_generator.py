@@ -998,10 +998,38 @@ class ConfigurationGenerator:
         # Validate configuration
         self._validate_uniapi_config(config)
         
-        # Convert to YAML
-        yaml_str = yaml.dump(config, default_flow_style=False, sort_keys=False)
+        # Convert to YAML with proper indentation for list items
+        yaml_str = self._dump_yaml_with_indent(config)
         
         logger.info(f"Generated uni-api YAML with {len(providers)} provider entries")
+        
+        return yaml_str
+
+    def _dump_yaml_with_indent(self, data: Dict[str, Any]) -> str:
+        """Dump YAML with proper indentation for list items.
+        
+        PyYAML by default doesn't indent list items under their parent key.
+        This method creates properly indented YAML output.
+        
+        Args:
+            data: Dictionary to convert to YAML.
+            
+        Returns:
+            YAML string with proper indentation.
+        """
+        # Create custom Dumper that indents list items
+        class IndentedDumper(yaml.SafeDumper):
+            def increase_indent(self, flow=False, indentless=False):
+                return super().increase_indent(flow=flow, indentless=False)
+        
+        yaml_str = yaml.dump(
+            data,
+            Dumper=IndentedDumper,
+            default_flow_style=False,
+            sort_keys=False,
+            indent=2,
+            allow_unicode=True
+        )
         
         return yaml_str
 
